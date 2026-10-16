@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trilha de Auditoria · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div>
+          <h1>Trilha de Auditoria</h1>
+          <p>Registro imutável de quem fez o quê e quando</p>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="card filters">
+          <div class="filters-label"><span data-icon="filter"></span>Filtros</div>
+          <select id="f-entidade">
+            <option value="">Todas as entidades</option>
+            <option value="solicitacao">Solicitações</option>
+            <option value="distrito">Distritos</option>
+          </select>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h3>Eventos</h3><span class="mono xs muted" id="contagem"></span></div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot">
+            <span class="xs muted">Eventos mais recentes primeiro</span>
+            <div class="pager" id="pager"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script type="module" src="js/auditoria.js"></script>
+</body>
+</html>

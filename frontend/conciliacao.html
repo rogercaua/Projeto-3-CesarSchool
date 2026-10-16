@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conciliação CNES · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div>
+          <h1>Conciliação CNES</h1>
+          <p>Comparativo entre a base municipal e os dados do CNES federal</p>
+        </div>
+        <div class="topbar-actions">
+          <span class="live-dot"></span>
+          <span class="mono xs muted" id="atualizado"></span>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="stats three" id="resumo"></section>
+        <section id="divergencias"></section>
+        <section class="card">
+          <div class="card-head"><h3 id="titulo-conformes">Registros Conformes</h3></div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>ID</th><th>Unidade</th><th>CNES Municipal</th><th>CNES Federal</th><th>Situação</th></tr></thead>
+              <tbody id="conformes"><tr><td colspan="5" class="vazio">Carregando…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script type="module" src="js/conciliacao.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhes da Solicitação · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <a class="back" href="pendencias.html" aria-label="Voltar">
+            <span data-icon="chevron" data-icon-class="rot180"></span>
+          </a>
+          <div class="topbar-divider"></div>
+          <div>
+            <div class="title-row"><h1>Detalhes da Solicitação</h1><span id="status"></span></div>
+            <p class="mono" id="protocolo"></p>
+          </div>
+        </div>
+      </header>
+
+      <div class="content medium" id="conteudo">
+        <div class="loading">Carregando…</div>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script type="module" src="js/solicitacao.js"></script>
+</body>
+</html>

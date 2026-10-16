@@ -1,0 +1,153 @@
+import pytest
+from sqlalchemy.orm import Session
+
+from app.core.database import engine
+from app.modules.auditoria.models import AuditoriaEvento
+
+
+def pedir_alteracao(client, headers, unidade_id, **dados):
+    return client.post("/solicitacoes", headers=headers, json={
+        "tipo": "ALTERACAO", "unidade_id": unidade_id,
+        "dados_propostos": dados, "justificativa": "Correção cadastral",
+    })
+
+
+def decidir(client, headers, solicitacao_id, resultado="APROVADA", justificativa="Conferido"):
+    return client.post(f"/solicitacoes/{solicitacao_id}/decisao", headers=headers,
+                       json={"resultado": resultado, "justificativa": justificativa})
+
+
+def test_inclusao_aprovada_cria_unidade(client, auth, criar_unidade):
+    unidade_id = criar_unidade()
+    u = client.get(f"/unidades/{unidade_id}", headers=auth("LEITOR")).json()
+    assert u["nome"] == "UBS Centro" and u["codigo"] == "U001" and u["status"] == "ATIVO"
+
+
+def test_aprovacao_altera_cadastro_e_guarda_versao_anterior(client, auth, criar_unidade):
+    uid = criar_unidade()
+    r = pedir_alteracao(client, auth("EDITOR_TECNICO"), uid, nome="UBS Nova", qtd_servicos=9)
+    assert r.status_code == 201
+    s = r.json()
+    assert s["status"] == "PENDENTE" and s["protocolo"].startswith("SOL-")
+    assert s["dados_atuais"] == {"nome": "UBS Centro", "qtd_servicos": 4}
+
+    d = decidir(client, auth("GESTOR_INFO"), s["id"])
+    assert d.status_code == 200
+    corpo = d.json()
+    assert corpo["status"] == "APROVADA"
+    assert corpo["decisoes"][0]["snapshot_anterior"]["nome"] == "UBS Centro"
+    assert corpo["decisoes"][0]["gestor_nome"] == "Gestor_Info"
+    assert corpo["unidade_cnes"] == "2077604"
+
+    u = client.get(f"/unidades/{uid}", headers=auth("LEITOR")).json()
+    assert (u["nome"], u["qtd_servicos"]) == ("UBS Nova", 9)
+
+    eventos = client.get("/auditoria", headers=auth("ADMIN")).json()["itens"]
+    assert eventos[0]["usuario_nome"] == "Gestor_Info"
+    acoes = {e["acao"] for e in eventos}
+    assert {"SOLICITACAO_CRIADA", "SOLICITACAO_APROVADA"} <= acoes
+
+
+def test_inativacao(client, auth, criar_unidade):
+    uid = criar_unidade()
+    r = client.post("/solicitacoes", headers=auth("EDITOR_TECNICO"),
+                    json={"tipo": "INATIVACAO", "unidade_id": uid, "justificativa": "Unidade fechada"})
+    decidir(client, auth("GESTOR_INFO"), r.json()["id"])
+    assert client.get(f"/unidades/{uid}", headers=auth("LEITOR")).json()["status"] == "INATIVO"
+    assert client.get("/dashboard/resumo", headers=auth("LEITOR")).json()["unidades_ativas"] == 0
+
+
+def test_justificativa_obrigatoria_na_decisao(client, auth, criar_unidade):
+    uid = criar_unidade()
+    sid = pedir_alteracao(client, auth("EDITOR_TECNICO"), uid, nome="Outro nome").json()["id"]
+    gestor = auth("GESTOR_INFO")
+    assert client.post(f"/solicitacoes/{sid}/decisao", headers=gestor, json={"resultado": "APROVADA"}).status_code == 422
+    assert decidir(client, gestor, sid, justificativa="ok").status_code == 422
+
+
+def test_devolver_reenviar_e_rejeitar(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+    sid = pedir_alteracao(client, editor, uid, nome="Nome errado").json()["id"]
+
+    assert decidir(client, gestor, sid, "DEVOLVIDA", "Falta comprovante").json()["status"] == "DEVOLVIDA"
+    r = client.put(f"/solicitacoes/{sid}", headers=editor, json={"dados_propostos": {"nome": "Nome certo"}})
+    assert r.status_code == 200 and r.json()["status"] == "PENDENTE"
+    assert r.json()["dados_propostos"] == {"nome": "Nome certo"}
+
+    assert decidir(client, gestor, sid, "REJEITADA", "Sem amparo").json()["status"] == "REJEITADA"
+    assert client.get(f"/unidades/{uid}", headers=editor).json()["nome"] == "UBS Centro"
+    assert decidir(client, gestor, sid).status_code == 409  # já decidida
+
+    contagem = client.get("/solicitacoes/contagem", headers=gestor).json()
+    assert contagem["REJEITADA"] == 1 and contagem["TODOS"] == 2  # inclusão aprovada + esta
+
+
+def test_permissoes_por_papel(client, auth, criar_unidade):
+    uid = criar_unidade()
+    assert client.get("/unidades").status_code == 401
+    assert pedir_alteracao(client, auth("LEITOR"), uid, nome="X1").status_code == 403
+    assert client.get("/solicitacoes", headers=auth("LEITOR")).status_code == 403
+    assert client.get("/auditoria", headers=auth("GESTOR_INFO")).status_code == 403
+
+    sid = pedir_alteracao(client, auth("EDITOR_TECNICO"), uid, nome="Novo nome").json()["id"]
+    assert decidir(client, auth("EDITOR_TECNICO", "outro@teste.gov.br"), sid).status_code == 403
+    # editor só enxerga as próprias solicitações
+    outro = auth("EDITOR_TECNICO", "outro@teste.gov.br")
+    assert client.get("/solicitacoes", headers=outro).json()["total"] == 0
+    assert client.get(f"/solicitacoes/{sid}", headers=outro).status_code == 403
+    assert client.get("/solicitacoes", headers=auth("GESTOR_INFO")).json()["total"] == 2
+
+
+def test_separacao_de_funcoes(client, auth, criar_unidade):
+    uid = criar_unidade()
+    # mesmo e-mail = mesmo usuário, mesmo com tokens de papéis diferentes
+    editor = auth("EDITOR_TECNICO", "pessoa@teste.gov.br")
+    gestor = auth("GESTOR_INFO", "pessoa@teste.gov.br")
+    sid = pedir_alteracao(client, editor, uid, nome="Nome B").json()["id"]
+    assert decidir(client, gestor, sid).status_code == 403
+
+
+def test_cnes_duplicado_e_validacoes(client, auth, criar_unidade):
+    criar_unidade("UBS A", "2077604")
+    uid_b = criar_unidade("UBS B", "9848271")
+    editor = auth("EDITOR_TECNICO")
+    assert pedir_alteracao(client, editor, uid_b, codigo_cnes="2077604").status_code == 409
+    assert pedir_alteracao(client, editor, uid_b, codigo_cnes="12").status_code == 422
+    assert pedir_alteracao(client, editor, uid_b, nome=None).status_code == 422
+    assert pedir_alteracao(client, editor, uid_b).status_code == 422  # nada a alterar
+    assert pedir_alteracao(client, editor, 999, nome="Fantasma").status_code == 404
+
+
+def test_cnes_busca_e_conciliacao(client, auth, criar_unidade):
+    criar_unidade("UBS Centro", "2077604")  # no CNES simulado o nome é "UBS Vila Madalena"
+    gestor = auth("GESTOR_INFO")
+    assert client.get("/cnes/estabelecimentos/2077604", headers=gestor).json()["nome"] == "UBS Vila Madalena"
+    assert client.get("/cnes/estabelecimentos/0000000", headers=gestor).status_code == 404
+
+    div = client.get("/cnes/conciliacao", headers=gestor).json()
+    assert any(d["divergencia"] == "CAMPO_DIVERGENTE" and d["campo"] == "nome" for d in div)
+    assert client.get("/cnes/conciliacao", headers=auth("LEITOR")).status_code == 403
+
+
+def test_filtros_de_unidades(client, auth, criar_unidade):
+    criar_unidade("UBS Centro", "2077604")
+    criar_unidade("AMA Norte", None)
+    leitor = auth("LEITOR")
+    assert client.get("/unidades?q=norte", headers=leitor).json()["total"] == 1
+    assert client.get("/unidades?q=U001", headers=leitor).json()["itens"][0]["nome"] == "UBS Centro"
+    assert client.get("/unidades?sem_cnes=true", headers=leitor).json()["total"] == 1
+    assert client.get("/dashboard/resumo", headers=leitor).json()["sem_codigo_cnes"] == 1
+
+
+def test_auditoria_e_imutavel(client, auth, criar_unidade):
+    criar_unidade()
+    with Session(engine) as db:
+        evento = db.query(AuditoriaEvento).first()
+        evento.acao = "ADULTERADO"
+        with pytest.raises(RuntimeError):
+            db.commit()
+        db.rollback()
+        db.delete(evento)
+        with pytest.raises(RuntimeError):
+            db.commit()

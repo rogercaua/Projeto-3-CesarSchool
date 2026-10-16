@@ -1,0 +1,9 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+pydantic-settings>=2.2
+pyjwt[crypto]>=2.8
+
+# Driver do banco escolhido (descomente um):
+# psycopg2-binary>=2.9   # PostgreSQL -> postgresql+psycopg2://usuario:senha@localhost/governanca_esf
+# pymysql>=1.1           # MySQL      -> mysql+pymysql://usuario:senha@localhost/governanca_esf

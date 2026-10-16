@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div>
+          <h1>Dashboard Cadastral</h1>
+          <p>Base oficial consolidada · Unidades de Saúde</p>
+        </div>
+        <div class="topbar-actions" id="acoes"></div>
+      </header>
+
+      <div class="content">
+        <section class="stats" id="stats"></section>
+
+        <section class="card filters">
+          <div class="filters-label"><span data-icon="filter"></span>Filtros</div>
+          <div class="search-box"><span data-icon="search"></span><input type="text" id="f-busca" placeholder="Buscar por nome ou ID..."></div>
+          <select id="f-distrito"><option value="">Todos os distritos</option></select>
+          <select id="f-tipo"><option value="">Todos os tipos</option></select>
+          <select id="f-status">
+            <option value="">Todos os status</option>
+            <option value="ATIVO">Ativo</option>
+            <option value="INATIVO">Inativo</option>
+          </select>
+          <button type="button" class="btn-link" id="limpar">Limpar</button>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h3>Unidades, Equipamentos e Serviços</h3>
+            <span class="mono xs muted" id="contagem"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr>
+                <th>ID</th><th>Nome da Unidade</th><th>Tipo</th><th>Distrito</th><th>Código CNES</th>
+                <th class="center">Equipamentos</th><th class="center">Serviços</th><th>Status</th>
+              </tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot">
+            <span class="xs muted">Dados oficiais · Base municipal consolidada</span>
+            <div class="pager" id="pager"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

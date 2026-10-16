@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitações · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div>
+          <h1 id="titulo">Central de Pendências</h1>
+          <p id="subtitulo">Fila de solicitações aguardando análise e aprovação</p>
+        </div>
+        <div class="topbar-actions" id="acoes"></div>
+      </header>
+
+      <div class="content">
+        <section class="card">
+          <div class="tabs" id="tabs"></div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr>
+                <th>Protocolo</th><th>Tipo</th><th>Unidade</th><th>Solicitante</th>
+                <th>Data</th><th>CNES</th><th>Status</th><th>Ação</th>
+              </tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot">
+            <span class="xs muted" id="rodape"></span>
+            <div class="pager" id="pager"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script type="module" src="js/pendencias.js"></script>
+</body>
+</html>
