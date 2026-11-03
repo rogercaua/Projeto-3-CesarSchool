@@ -11,6 +11,19 @@ let unidades = [];
 let solicitacao = null; // preenchida no modo "corrigir e reenviar"
 
 const unidadeSelecionada = () => unidades.find((u) => String(u.id) === $('#f-unidade').value);
+const soMudaStatus = () => tipo === 'INATIVACAO' || tipo === 'REATIVACAO';
+const STATUS_ELEGIVEL = { INATIVACAO: 'ATIVO', REATIVACAO: 'INATIVO' };
+
+/** Na inativação só aparecem unidades ativas; na reativação, só as inativas. */
+function desenharUnidades() {
+  const atual = $('#f-unidade').value;
+  const elegiveis = unidades.filter((u) => !STATUS_ELEGIVEL[tipo] || u.status === STATUS_ELEGIVEL[tipo]);
+  const rotulo = elegiveis.length ? 'Selecione a unidade...' : 'Nenhuma unidade disponível para esta solicitação';
+  $('#f-unidade').innerHTML = `<option value="">${rotulo}</option>${elegiveis
+    .map((u) => `<option value="${u.id}">${esc(u.nome)} (${codigoUnidade(u.id)})</option>`)
+    .join('')}`;
+  $('#f-unidade').value = elegiveis.some((u) => String(u.id) === atual) ? atual : '';
+}
 
 // ───────── Preenchimento dos campos ─────────
 function preencher(o = {}, semCnes = false) {
@@ -30,8 +43,8 @@ function preencher(o = {}, semCnes = false) {
 
 function atualizarSemCnes() {
   const marcado = $('#f-semcnes').checked;
-  $('#f-cnes').disabled = marcado || tipo === 'INATIVACAO';
-  $('#btn-cnes').disabled = marcado || tipo === 'INATIVACAO';
+  $('#f-cnes').disabled = marcado || soMudaStatus();
+  $('#btn-cnes').disabled = marcado || soMudaStatus();
   $('#card-semcnes').classList.toggle('on', marcado);
   $('#ic-semcnes').hidden = !marcado;
 }
@@ -39,21 +52,17 @@ function atualizarSemCnes() {
 function aplicarTipo() {
   $$('#tipos button').forEach((b) => b.classList.toggle('sel', b.dataset.tipo === tipo));
   $('#bloco-unidade').hidden = tipo === 'INCLUSAO';
-  $('#bloco-qtd').hidden = tipo === 'INATIVACAO';
-  const somenteLeitura = tipo === 'INATIVACAO';
+  $('#bloco-qtd').hidden = soMudaStatus();
+  const somenteLeitura = soMudaStatus();
   ['#f-nome', '#f-tipo', '#f-distrito', '#f-semcnes', '#f-eq', '#f-serv'].forEach((s) => ($(s).disabled = somenteLeitura));
   atualizarSemCnes();
 }
 
 function mudarTipo(novo) {
   tipo = novo;
+  desenharUnidades();
   aplicarTipo();
-  if (tipo === 'INCLUSAO') {
-    preencher({});
-  } else {
-    const u = unidadeSelecionada();
-    if (u) preencher(u);
-  }
+  preencher(tipo === 'INCLUSAO' ? {} : unidadeSelecionada() ?? {});
 }
 
 // ───────── Leitura e validação ─────────
@@ -81,7 +90,7 @@ function validar(c) {
 
 /** Monta dados_propostos: inclusão envia tudo; alteração envia só o que mudou. */
 function montarDados(unidade) {
-  if (tipo === 'INATIVACAO') return undefined;
+  if (soMudaStatus()) return undefined;
   const c = lerCampos();
   validar(c);
   if (tipo === 'INCLUSAO') {
@@ -174,10 +183,7 @@ try {
   $('#f-distrito').innerHTML = distritos.length
     ? distritos.map((d) => `<option value="${d.id}">${esc(d.nome)}</option>`).join('')
     : '<option value="">Nenhum distrito cadastrado</option>';
-  $('#f-unidade').insertAdjacentHTML(
-    'beforeend',
-    unidades.map((u) => `<option value="${u.id}">${esc(u.nome)} (${codigoUnidade(u.id)})</option>`).join(''),
-  );
+  desenharUnidades();
 } catch (e) {
   toast(e.message);
 }

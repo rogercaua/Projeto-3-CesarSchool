@@ -47,6 +47,7 @@ function exibir(campo, valor) {
 
 function linhasComparativo(s) {
   if (s.tipo === 'INATIVACAO') return [{ campo: 'status', de: s.dados_atuais?.status ?? 'ATIVO', para: 'INATIVO' }];
+  if (s.tipo === 'REATIVACAO') return [{ campo: 'status', de: s.dados_atuais?.status ?? 'INATIVO', para: 'ATIVO' }];
   return Object.entries(s.dados_propostos || {}).map(([campo, para]) => ({ campo, de: s.dados_atuais?.[campo], para }));
 }
 

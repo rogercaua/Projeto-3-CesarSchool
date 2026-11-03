@@ -51,7 +51,7 @@ Páginas estáticas em `frontend/`, servidas pelo próprio FastAPI na raiz (`/`)
 frontend/
   index.html               login
   dashboard.html           cards de resumo, filtros e tabela de unidades
-  nova-solicitacao.html    inclusão, alteração ou inativação (também usada para corrigir e reenviar)
+  nova-solicitacao.html    inclusão, alteração, inativação ou reativação (também usada para corrigir e reenviar)
   pendencias.html          Central de Pendências (gestor/admin) e Minhas Solicitações (editor)
   solicitacao.html         comparativo atual × proposto, histórico e decisão
   conciliacao.html         divergências com o CNES
@@ -70,7 +70,8 @@ frontend/
 ## Regras de negócio
 
 - **O cadastro oficial (`unidades`) não tem POST/PUT/DELETE.** Ele só muda quando um gestor aprova uma solicitação.
-- Tipos de solicitação: `INCLUSAO`, `ALTERACAO`, `INATIVACAO`.
+- Tipos de solicitação: `INCLUSAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`.
+- Inativação só vale para unidade ativa, e reativação só para unidade inativa. Nos dois casos muda apenas o status, e `dados_propostos` é ignorado.
 - Status: `PENDENTE` → `APROVADA` | `REJEITADA` | `DEVOLVIDA`; a devolvida volta a `PENDENTE` quando o editor reenvia (`PUT`).
 - A justificativa é obrigatória em toda solicitação e em toda decisão.
 - Ao aprovar, os dados anteriores da unidade ficam em `decisoes.snapshot_anterior`.
