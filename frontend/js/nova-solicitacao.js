@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 const reenvioId = new URLSearchParams(location.search).get('reenviar');
 await iniciarPagina(reenvioId ? 'pendencias' : 'nova', { papeis: ['EDITOR_TECNICO'] });
 
-let tipo = 'ALTERACAO';
+let tipo = null;
 let unidades = [];
 let solicitacao = null; // preenchida no modo "corrigir e reenviar"
 
@@ -116,6 +116,7 @@ async function enviar() {
   mostrarErro('');
   const botao = $('#enviar');
   try {
+    if (!tipo) throw new Error('Selecione o tipo de solicitação.');
     const justificativa = $('#f-just').value.trim();
     if (justificativa.length < 3) throw new Error('Informe a justificativa da solicitação.');
 
