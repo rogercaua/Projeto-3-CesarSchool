@@ -35,6 +35,7 @@ function sidebarHtml(usuario, ativo, badge) {
   }
   if (admin) {
     nav += '<div class="nav-section">Administração</div>';
+    nav += item('distritos.html', 'distritos', ativo, 'mapPin', 'Distritos');
     nav += item('auditoria.html', 'auditoria', ativo, 'fileText', 'Trilha de Auditoria');
   }
 

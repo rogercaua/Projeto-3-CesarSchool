@@ -55,6 +55,7 @@ frontend/
   pendencias.html          Central de Pendências (gestor/admin) e Minhas Solicitações (editor)
   solicitacao.html         comparativo atual × proposto, histórico e decisão
   conciliacao.html         divergências com o CNES
+  distritos.html           cadastro de distritos sanitários (admin)
   auditoria.html           trilha de auditoria (admin)
   css/style.css            estilos, com as cores e fontes do Figma
   js/                      api.js (chamadas e token), layout.js (barra lateral por papel), uma página por arquivo
@@ -74,6 +75,7 @@ frontend/
 - A justificativa é obrigatória em toda solicitação e em toda decisão.
 - Ao aprovar, os dados anteriores da unidade ficam em `decisoes.snapshot_anterior`.
 - Separação de funções: quem abriu a solicitação não pode decidi-la, mesmo que também tenha o papel de gestor.
+- Distritos não aceitam nomes repetidos (sem diferenciar maiúsculas de minúsculas) e só podem ser excluídos se não tiverem unidades vinculadas. Solicitação em aberto que aponte para um distrito excluído é recusada na aprovação.
 - Toda operação grava um evento em `auditoria_eventos` na mesma transação. A tabela é imutável (updates e deletes são bloqueados pelo SQLAlchemy).
 
 ## Permissões
@@ -86,7 +88,7 @@ frontend/
 | Decidir solicitações | | ✔ | | |
 | Conciliação CNES | | ✔ | ✔ | |
 | Consulta de estabelecimento no CNES | ✔ | ✔ | ✔ | |
-| Criar distritos e ver auditoria | | | ✔ | |
+| Criar, editar e excluir distritos; ver auditoria | | | ✔ | |
 
 ## Endpoints
 
@@ -106,6 +108,7 @@ frontend/
 | `GET /cnes/estabelecimentos/{codigo}` | Busca no CNES para o formulário |
 | `GET /cnes/conciliacao` | Divergências entre a base local e o CNES |
 | `GET/POST /distritos` | Lista (todos) e cria (admin) |
+| `PUT/DELETE /distritos/{id}` | Edita e exclui (admin) |
 | `GET /auditoria` | Trilha de auditoria (admin) |
 
 Exemplo de alteração:
