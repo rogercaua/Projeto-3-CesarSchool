@@ -57,6 +57,72 @@ def test_inativacao(client, auth, criar_unidade):
     assert client.get("/dashboard/resumo", headers=auth("LEITOR")).json()["unidades_ativas"] == 0
 
 
+def pedir_mudanca_de_status(client, headers, tipo, unidade_id):
+    return client.post("/solicitacoes", headers=headers,
+                       json={"tipo": tipo, "unidade_id": unidade_id, "justificativa": "Mudança de situação"})
+
+
+def test_reativacao(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+    decidir(client, gestor, pedir_mudanca_de_status(client, editor, "INATIVACAO", uid).json()["id"])
+
+    r = client.post("/solicitacoes", headers=editor, json={
+        "tipo": "REATIVACAO", "unidade_id": uid, "justificativa": "Unidade reaberta",
+        "dados_propostos": {"nome": "Ignorado na reativação"},
+    })
+    assert r.status_code == 201
+    s = r.json()
+    assert s["dados_atuais"] == {"status": "INATIVO"} and s["dados_propostos"] is None
+    # enquanto não é aprovada, a unidade continua inativa
+    assert client.get(f"/unidades/{uid}", headers=editor).json()["status"] == "INATIVO"
+
+    d = decidir(client, gestor, s["id"])
+    assert d.status_code == 200
+    assert d.json()["decisoes"][0]["snapshot_anterior"]["status"] == "INATIVO"
+
+    u = client.get(f"/unidades/{uid}", headers=editor).json()
+    assert u["status"] == "ATIVO" and u["nome"] == "UBS Centro"
+    assert client.get("/dashboard/resumo", headers=editor).json()["unidades_ativas"] == 1
+
+    acoes = {e["acao"] for e in client.get("/auditoria", headers=auth("ADMIN")).json()["itens"]}
+    assert "SOLICITACAO_APROVADA" in acoes
+
+
+def test_reativacao_recusada_em_unidade_ativa(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+    assert pedir_mudanca_de_status(client, editor, "REATIVACAO", uid).status_code == 409
+    assert pedir_mudanca_de_status(client, editor, "REATIVACAO", 999).status_code == 404
+
+    decidir(client, gestor, pedir_mudanca_de_status(client, editor, "INATIVACAO", uid).json()["id"])
+    # dois pedidos em aberto: o segundo fica sem efeito depois que o primeiro é aprovado
+    primeiro = pedir_mudanca_de_status(client, editor, "REATIVACAO", uid).json()["id"]
+    segundo = pedir_mudanca_de_status(client, editor, "REATIVACAO", uid).json()["id"]
+    assert decidir(client, gestor, primeiro).status_code == 200
+    assert decidir(client, gestor, segundo).status_code == 409
+
+
+def test_reativacao_devolvida_e_reenviada(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+    decidir(client, gestor, pedir_mudanca_de_status(client, editor, "INATIVACAO", uid).json()["id"])
+
+    sid = pedir_mudanca_de_status(client, editor, "REATIVACAO", uid).json()["id"]
+    assert decidir(client, gestor, sid, "DEVOLVIDA", "Falta o comprovante").status_code == 200
+    r = client.put(f"/solicitacoes/{sid}", headers=editor,
+                   json={"dados_propostos": {"nome": "Ignorado"}, "justificativa": "Comprovante anexado"})
+    assert r.status_code == 200 and r.json()["status"] == "PENDENTE" and r.json()["dados_propostos"] is None
+    assert decidir(client, gestor, sid).status_code == 200
+    assert client.get(f"/unidades/{uid}", headers=editor).json()["status"] == "ATIVO"
+
+
+def test_reativacao_exige_papel_de_editor(client, auth, criar_unidade):
+    uid = criar_unidade()
+    for papel in ("LEITOR", "GESTOR_INFO", "ADMIN"):
+        assert pedir_mudanca_de_status(client, auth(papel), "REATIVACAO", uid).status_code == 403
+
+
 def test_justificativa_obrigatoria_na_decisao(client, auth, criar_unidade):
     uid = criar_unidade()
     sid = pedir_alteracao(client, auth("EDITOR_TECNICO"), uid, nome="Outro nome").json()["id"]

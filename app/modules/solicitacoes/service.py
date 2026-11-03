@@ -23,6 +23,10 @@ from app.modules.unidades.service import snapshot
 
 _OBRIGATORIOS_INCLUSAO = ("nome", "tipo", "distrito_id")
 _ANULAVEIS = {"codigo_cnes", "latitude", "longitude"}
+_MUDAM_SO_STATUS = {
+    TipoSolicitacao.INATIVACAO: StatusUnidade.INATIVO,
+    TipoSolicitacao.REATIVACAO: StatusUnidade.ATIVO,
+}
 
 
 # ---------- helpers ----------
@@ -54,6 +58,8 @@ def _validar(db: Session, tipo: TipoSolicitacao, unidade_id: int | None, dados: 
             raise HTTPException(422, "Informe ao menos um campo a alterar")
         if tipo == TipoSolicitacao.INATIVACAO and unidade.status == StatusUnidade.INATIVO:
             raise HTTPException(409, "A unidade já está inativa")
+        if tipo == TipoSolicitacao.REATIVACAO and unidade.status == StatusUnidade.ATIVO:
+            raise HTTPException(409, "A unidade já está ativa")
 
     nulos = [k for k, v in dados.items() if v is None and k not in _ANULAVEIS]
     if nulos:
@@ -74,7 +80,7 @@ def _validar(db: Session, tipo: TipoSolicitacao, unidade_id: int | None, dados: 
 def _dados_atuais(unidade: Unidade | None, tipo: TipoSolicitacao, dados: dict) -> dict | None:
     if unidade is None:
         return None
-    if tipo == TipoSolicitacao.INATIVACAO:
+    if tipo in _MUDAM_SO_STATUS:
         return {"status": unidade.status.value}
     return {campo: _valor(getattr(unidade, campo)) for campo in dados}
 
@@ -96,8 +102,8 @@ def _aplicar(db: Session, s: Solicitacao) -> dict | None:
         return None
 
     anterior = snapshot(unidade)
-    if s.tipo == TipoSolicitacao.INATIVACAO:
-        unidade.status = StatusUnidade.INATIVO
+    if s.tipo in _MUDAM_SO_STATUS:
+        unidade.status = _MUDAM_SO_STATUS[s.tipo]
     else:
         for campo, valor in _converter(dados).items():
             setattr(unidade, campo, valor)
@@ -115,7 +121,7 @@ def _escopo(principal: Principal) -> list:
 # ---------- operações ----------
 
 def criar(db: Session, dados: SolicitacaoCreate, principal: Principal) -> Solicitacao:
-    propostos = {} if dados.tipo == TipoSolicitacao.INATIVACAO else _normalizar(dados.dados_propostos)
+    propostos = {} if dados.tipo in _MUDAM_SO_STATUS else _normalizar(dados.dados_propostos)
     unidade = _validar(db, dados.tipo, dados.unidade_id, propostos)
 
     s = Solicitacao(
@@ -186,7 +192,7 @@ def reenviar(db: Session, solicitacao_id: int, dados: SolicitacaoReenvio, princi
         raise HTTPException(409, "Só é possível reenviar solicitações devolvidas")
 
     propostos = s.dados_propostos or {}
-    if s.tipo != TipoSolicitacao.INATIVACAO and dados.dados_propostos is not None:
+    if s.tipo not in _MUDAM_SO_STATUS and dados.dados_propostos is not None:
         propostos = _normalizar(dados.dados_propostos)
     unidade = _validar(db, s.tipo, s.unidade_id, propostos)
 

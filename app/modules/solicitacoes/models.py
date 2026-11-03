@@ -12,6 +12,7 @@ class TipoSolicitacao(str, enum.Enum):
     INCLUSAO = "INCLUSAO"
     ALTERACAO = "ALTERACAO"
     INATIVACAO = "INATIVACAO"
+    REATIVACAO = "REATIVACAO"
 
 
 class StatusSolicitacao(str, enum.Enum):
