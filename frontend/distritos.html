@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distritos Sanitários · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div>
+          <h1>Distritos Sanitários</h1>
+          <p>Cadastro dos distritos usados nas unidades de saúde</p>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="card pad">
+          <form id="form-novo" autocomplete="off">
+            <label class="lbl" for="f-nome">Novo distrito <span class="req">*</span></label>
+            <div class="inline-field">
+              <input type="text" id="f-nome" placeholder="Ex: Distrito Sanitário I" maxlength="100">
+              <button type="submit" class="btn btn-primary" id="adicionar"><span data-icon="plus"></span>Adicionar</button>
+            </div>
+            <p class="field-msg bad" id="erro" hidden></p>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h3>Distritos cadastrados</h3><span class="mono xs muted" id="contagem"></span></div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Nome</th><th>Ações</th></tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script type="module" src="js/distritos.js"></script>
+</body>
+</html>
