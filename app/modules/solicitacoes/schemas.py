@@ -36,6 +36,10 @@ class SolicitacaoReenvio(BaseModel):
     justificativa: str | None = Field(None, min_length=3)
 
 
+class CancelamentoIn(BaseModel):
+    justificativa: str = Field(min_length=3)
+
+
 class DecisaoIn(BaseModel):
     resultado: ResultadoDecisao
     justificativa: str = Field(min_length=3)  # obrigatória em qualquer decisão

@@ -73,6 +73,7 @@ frontend/
 - Tipos de solicitação: `INCLUSAO`, `ALTERACAO`, `INATIVACAO`, `REATIVACAO`.
 - Inativação só vale para unidade ativa, e reativação só para unidade inativa. Nos dois casos muda apenas o status, e `dados_propostos` é ignorado.
 - Status: `PENDENTE` → `APROVADA` | `REJEITADA` | `DEVOLVIDA`; a devolvida volta a `PENDENTE` quando o editor reenvia (`PUT`).
+- O solicitante pode cancelar uma solicitação `PENDENTE` ou `DEVOLVIDA`. `CANCELADA` é um estado final: o cadastro não muda, a solicitação continua no histórico e a justificativa fica na trilha de auditoria.
 - A justificativa é obrigatória em toda solicitação e em toda decisão.
 - Ao aprovar, os dados anteriores da unidade ficam em `decisoes.snapshot_anterior`.
 - Separação de funções: quem abriu a solicitação não pode decidi-la, mesmo que também tenha o papel de gestor.
@@ -105,6 +106,7 @@ frontend/
 | `GET /solicitacoes/contagem` | Totais por status (abas da Central de Pendências) |
 | `GET /solicitacoes/{id}` | Detalhe com comparativo atual × proposto e decisões |
 | `PUT /solicitacoes/{id}` | Editor reenvia uma solicitação devolvida |
+| `POST /solicitacoes/{id}/cancelamento` | Solicitante cancela uma solicitação em aberto |
 | `POST /solicitacoes/{id}/decisao` | Gestor aprova, devolve ou rejeita |
 | `GET /cnes/estabelecimentos/{codigo}` | Busca no CNES para o formulário |
 | `GET /cnes/conciliacao` | Divergências entre a base local e o CNES |

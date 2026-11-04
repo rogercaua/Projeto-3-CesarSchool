@@ -123,6 +123,68 @@ def test_reativacao_exige_papel_de_editor(client, auth, criar_unidade):
         assert pedir_mudanca_de_status(client, auth(papel), "REATIVACAO", uid).status_code == 403
 
 
+def cancelar(client, headers, solicitacao_id, justificativa="Aberta por engano"):
+    return client.post(f"/solicitacoes/{solicitacao_id}/cancelamento", headers=headers,
+                       json={"justificativa": justificativa})
+
+
+def test_cancelar_pendente_e_devolvida(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+
+    pendente = pedir_alteracao(client, editor, uid, nome="Outro nome").json()["id"]
+    r = cancelar(client, editor, pendente)
+    assert r.status_code == 200 and r.json()["status"] == "CANCELADA"
+
+    devolvida = pedir_alteracao(client, editor, uid, nome="Outro nome").json()["id"]
+    decidir(client, gestor, devolvida, "DEVOLVIDA", "Falta comprovante")
+    assert cancelar(client, editor, devolvida).json()["status"] == "CANCELADA"
+
+    assert client.get(f"/unidades/{uid}", headers=editor).json()["nome"] == "UBS Centro"
+    assert client.get("/solicitacoes/contagem", headers=gestor).json()["CANCELADA"] == 2
+    assert client.get("/solicitacoes", headers=gestor, params={"status": "CANCELADA"}).json()["total"] == 2
+
+    eventos = client.get("/auditoria", headers=auth("ADMIN")).json()["itens"]
+    assert eventos[0]["acao"] == "SOLICITACAO_CANCELADA"
+    assert eventos[0]["detalhes"]["justificativa"] == "Aberta por engano"
+
+
+def test_cancelada_fica_encerrada(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+    sid = pedir_alteracao(client, editor, uid, nome="Outro nome").json()["id"]
+    cancelar(client, editor, sid)
+
+    assert cancelar(client, editor, sid).status_code == 409
+    assert decidir(client, gestor, sid).status_code == 409
+    assert client.put(f"/solicitacoes/{sid}", headers=editor, json={"justificativa": "Reabrir"}).status_code == 409
+
+
+def test_nao_cancela_solicitacao_ja_decidida(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor, gestor = auth("EDITOR_TECNICO"), auth("GESTOR_INFO")
+    aprovada = pedir_alteracao(client, editor, uid, nome="Nome A").json()["id"]
+    rejeitada = pedir_alteracao(client, editor, uid, nome="Nome B").json()["id"]
+    decidir(client, gestor, aprovada)
+    decidir(client, gestor, rejeitada, "REJEITADA", "Sem amparo")
+
+    assert cancelar(client, editor, aprovada).status_code == 409
+    assert cancelar(client, editor, rejeitada).status_code == 409
+
+
+def test_so_o_solicitante_cancela(client, auth, criar_unidade):
+    uid = criar_unidade()
+    editor = auth("EDITOR_TECNICO")
+    sid = pedir_alteracao(client, editor, uid, nome="Outro nome").json()["id"]
+
+    assert cancelar(client, auth("EDITOR_TECNICO", "outro@teste.gov.br"), sid).status_code == 403
+    for papel in ("LEITOR", "GESTOR_INFO", "ADMIN"):
+        assert cancelar(client, auth(papel), sid).status_code == 403
+    assert cancelar(client, editor, 999).status_code == 404
+    assert cancelar(client, editor, sid, justificativa="ok").status_code == 422
+    assert client.get(f"/solicitacoes/{sid}", headers=editor).json()["status"] == "PENDENTE"
+
+
 def test_justificativa_obrigatoria_na_decisao(client, auth, criar_unidade):
     uid = criar_unidade()
     sid = pedir_alteracao(client, auth("EDITOR_TECNICO"), uid, nome="Outro nome").json()["id"]

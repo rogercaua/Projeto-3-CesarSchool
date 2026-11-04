@@ -17,7 +17,13 @@ from app.modules.solicitacoes.models import (
     StatusSolicitacao,
     TipoSolicitacao,
 )
-from app.modules.solicitacoes.schemas import DadosUnidade, DecisaoIn, SolicitacaoCreate, SolicitacaoReenvio
+from app.modules.solicitacoes.schemas import (
+    CancelamentoIn,
+    DadosUnidade,
+    DecisaoIn,
+    SolicitacaoCreate,
+    SolicitacaoReenvio,
+)
 from app.modules.unidades.models import StatusUnidade, Unidade
 from app.modules.unidades.service import snapshot
 
@@ -203,6 +209,21 @@ def reenviar(db: Session, solicitacao_id: int, dados: SolicitacaoReenvio, princi
     s.status = StatusSolicitacao.PENDENTE
     s.atualizada_em = agora()
     registrar(db, principal.id, "SOLICITACAO_REENVIADA", "solicitacao", s.id, {"protocolo": s.protocolo})
+    db.commit()
+    return s
+
+
+def cancelar(db: Session, solicitacao_id: int, dados: CancelamentoIn, principal: Principal) -> Solicitacao:
+    s = obter(db, solicitacao_id, principal)
+    if s.solicitante_id != principal.id:
+        raise HTTPException(403, "Só quem abriu a solicitação pode cancelá-la")
+    if s.status not in (StatusSolicitacao.PENDENTE, StatusSolicitacao.DEVOLVIDA):
+        raise HTTPException(409, f"Não é possível cancelar: a solicitação já está {s.status.value}")
+
+    s.status = StatusSolicitacao.CANCELADA
+    s.atualizada_em = agora()
+    registrar(db, principal.id, "SOLICITACAO_CANCELADA", "solicitacao", s.id,
+              {"protocolo": s.protocolo, "justificativa": dados.justificativa})
     db.commit()
     return s
 

@@ -8,6 +8,7 @@ from app.modules.auth.schemas import Papel
 from app.modules.solicitacoes import service
 from app.modules.solicitacoes.models import StatusSolicitacao, TipoSolicitacao
 from app.modules.solicitacoes.schemas import (
+    CancelamentoIn,
     DecisaoIn,
     SolicitacaoCreate,
     SolicitacaoDetalhe,
@@ -60,6 +61,16 @@ def reenviar(
     principal: Principal = Depends(_EDITOR),
 ):
     return service.reenviar(db, solicitacao_id, dados, principal)
+
+
+@router.post("/{solicitacao_id}/cancelamento", response_model=SolicitacaoOut)
+def cancelar(
+    solicitacao_id: int,
+    dados: CancelamentoIn,
+    db: Session = Depends(get_db),
+    principal: Principal = Depends(_EDITOR),
+):
+    return service.cancelar(db, solicitacao_id, dados, principal)
 
 
 @router.post("/{solicitacao_id}/decisao", response_model=SolicitacaoDetalhe)

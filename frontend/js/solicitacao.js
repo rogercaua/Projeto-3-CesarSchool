@@ -26,12 +26,15 @@ const RESULTADOS = {
     exemplo: 'Ex: Falta comprovante do novo endereço. Anexe o documento e reenvie.' },
   REJEITADA: { titulo: 'Confirmar Rejeição', sub: 'A solicitação será recusada e encerrada.', cor: 'red', botao: 'Rejeitar Solicitação', icone: 'x',
     exemplo: 'Ex: Código CNES informado não consta na base DATASUS.' },
+  CANCELADA: { titulo: 'Cancelar Solicitação', sub: 'A solicitação será encerrada e o cadastro não será alterado.', cor: 'red', botao: 'Confirmar Cancelamento', icone: 'x',
+    exemplo: 'Ex: Solicitação aberta por engano para a unidade errada.' },
 };
 
 const MENSAGEM_FINAL = {
   APROVADA: ['green', 'check', 'Solicitação Aprovada', 'A base oficial foi atualizada e o log de auditoria foi gerado.'],
   DEVOLVIDA: ['amber', 'undo', 'Solicitação Devolvida', 'A solicitação voltou ao solicitante para correção e novo envio.'],
   REJEITADA: ['red', 'x', 'Solicitação Rejeitada', 'A recusa foi registrada no histórico e na trilha de auditoria.'],
+  CANCELADA: ['red', 'x', 'Solicitação Cancelada', 'O cancelamento foi registrado na trilha de auditoria. O cadastro não foi alterado.'],
 };
 
 const distritos = Object.fromEntries((await api('/distritos').catch(() => [])).map((d) => [d.id, d.nome]));
@@ -60,6 +63,9 @@ function eventosHistorico(s) {
   if (s.status === 'PENDENTE' && s.decisoes.length) {
     eventos.push({ quando: s.atualizada_em, quem: s.solicitante_nome, texto: 'Solicitação reenviada após correção' });
   }
+  if (s.status === 'CANCELADA') {
+    eventos.push({ quando: s.atualizada_em, quem: s.solicitante_nome, texto: 'Solicitação cancelada pelo solicitante' });
+  }
   return eventos.sort((a, b) => new Date(a.quando) - new Date(b.quando));
 }
 
@@ -82,8 +88,12 @@ function renderizar(s) {
       <button type="button" class="btn btn-amber" data-decisao="DEVOLVIDA">${icon('undo')}Devolver</button>
       <button type="button" class="btn btn-red" data-decisao="REJEITADA">${icon('x')}Rejeitar</button>
       <a class="push" href="pendencias.html">Deixar para depois</a></div>`;
-  } else if (ehDono && s.status === 'DEVOLVIDA') {
-    acoes = `<div class="actions-row"><a class="btn btn-primary" href="nova-solicitacao.html?reenviar=${s.id}">Corrigir e reenviar</a></div>`;
+  } else if (ehDono && ['PENDENTE', 'DEVOLVIDA'].includes(s.status)) {
+    const corrigir = s.status === 'DEVOLVIDA'
+      ? `<a class="btn btn-primary" href="nova-solicitacao.html?reenviar=${s.id}">Corrigir e reenviar</a>`
+      : '';
+    acoes = `<div class="actions-row">${corrigir}
+      <button type="button" class="btn btn-red" data-decisao="CANCELADA">${icon('x')}Cancelar solicitação</button></div>`;
   }
 
   const banner = ehDono && s.status === 'DEVOLVIDA' && ultima
@@ -190,7 +200,12 @@ function abrirModal(s, resultado) {
     erro.hidden = true;
     ok.disabled = true;
     try {
-      await api(`/solicitacoes/${s.id}/decisao`, { method: 'POST', body: { resultado, justificativa: texto.value.trim() } });
+      const justificativa = texto.value.trim();
+      if (resultado === 'CANCELADA') {
+        await api(`/solicitacoes/${s.id}/cancelamento`, { method: 'POST', body: { justificativa } });
+      } else {
+        await api(`/solicitacoes/${s.id}/decisao`, { method: 'POST', body: { resultado, justificativa } });
+      }
       fechar();
       telaFinal(s, resultado);
     } catch (e) {

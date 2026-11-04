@@ -239,6 +239,7 @@ table.data.red td { border-top-color: #fef2f2; }
 .badge-devolvida { background: #ffedd5; color: #9a3412; }
 .badge-aprovada, .badge-conforme { background: #d1fae5; color: #065f46; }
 .badge-rejeitada { background: #fee2e2; color: #991b1b; }
+.badge-cancelada { background: var(--slate-100); color: var(--slate-600); }
 .badge-divergente { background: #fce7f3; color: #9d174d; }
 .badge-ativo { background: #dcfce7; color: #14532d; }
 .badge-inativo { background: var(--slate-100); color: var(--slate-600); }
