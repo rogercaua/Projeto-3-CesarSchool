@@ -20,6 +20,7 @@ class StatusSolicitacao(str, enum.Enum):
     DEVOLVIDA = "DEVOLVIDA"  # gestor pediu correção; o editor reenvia
     APROVADA = "APROVADA"
     REJEITADA = "REJEITADA"
+    CANCELADA = "CANCELADA"  # encerrada pelo solicitante; não altera o cadastro
 
 
 class ResultadoDecisao(str, enum.Enum):

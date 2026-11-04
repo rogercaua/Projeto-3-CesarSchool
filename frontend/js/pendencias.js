@@ -14,6 +14,7 @@ const ABAS = [
   { chave: 'DEVOLVIDA', rotulo: 'Devolvidas', total: 'DEVOLVIDA' },
   { chave: 'APROVADA', rotulo: 'Aprovadas', total: 'APROVADA' },
   { chave: 'REJEITADA', rotulo: 'Rejeitadas', total: 'REJEITADA' },
+  { chave: 'CANCELADA', rotulo: 'Canceladas', total: 'CANCELADA' },
 ];
 
 let aba = '';

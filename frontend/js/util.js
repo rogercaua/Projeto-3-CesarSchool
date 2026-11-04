@@ -22,7 +22,7 @@ export const fmtDataHora = (iso) =>
 export const codigoUnidade = (id) => `U${String(id).padStart(3, '0')}`;
 
 export const TIPO_SOL = { INCLUSAO: 'Inclusão', ALTERACAO: 'Alteração', INATIVACAO: 'Inativação', REATIVACAO: 'Reativação' };
-export const STATUS_SOL = { PENDENTE: 'Pendente', DEVOLVIDA: 'Devolvida', APROVADA: 'Aprovada', REJEITADA: 'Rejeitada' };
+export const STATUS_SOL = { PENDENTE: 'Pendente', DEVOLVIDA: 'Devolvida', APROVADA: 'Aprovada', REJEITADA: 'Rejeitada', CANCELADA: 'Cancelada' };
 export const STATUS_UNIDADE = { ATIVO: 'Ativo', INATIVO: 'Inativo' };
 export const TIPOS_UNIDADE = ['UBS', 'AMA', 'CMS', 'CEU AS', 'CRS', 'AMA/UBS'];
 

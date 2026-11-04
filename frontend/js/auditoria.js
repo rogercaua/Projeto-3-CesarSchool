@@ -13,6 +13,7 @@ const ACOES = {
   SOLICITACAO_APROVADA: 'Solicitação aprovada',
   SOLICITACAO_DEVOLVIDA: 'Solicitação devolvida',
   SOLICITACAO_REJEITADA: 'Solicitação rejeitada',
+  SOLICITACAO_CANCELADA: 'Solicitação cancelada',
   DISTRITO_CRIADO: 'Distrito criado',
   DISTRITO_ATUALIZADO: 'Distrito atualizado',
   DISTRITO_EXCLUIDO: 'Distrito excluído',
