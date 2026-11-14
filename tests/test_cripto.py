@@ -43,7 +43,7 @@ def test_modo_keycloak_recusa_a_chave_de_desenvolvimento():
 
     from app.core.config import Settings
 
+    sso = {"auth_mode": "keycloak", "keycloak_issuer": "https://sso.exemplo/realms/x", "keycloak_client_id": "web"}
     with pytest.raises(ValidationError, match="CRIPTO_CHAVE"):
-        Settings(auth_mode="keycloak", keycloak_issuer="https://sso.exemplo/realms/x")
-    chave = "A" * 43 + "="
-    assert Settings(auth_mode="keycloak", keycloak_issuer="https://sso.exemplo/realms/x", cripto_chave=chave)
+        Settings(**sso)
+    assert Settings(**sso, cripto_chave="A" * 43 + "=")

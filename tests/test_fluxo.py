@@ -318,3 +318,18 @@ def test_busca_trata_curingas_como_texto(client, auth, criar_unidade):
     criar_unidade()
     assert client.get("/unidades", headers=auth("LEITOR"), params={"q": "%"}).json()["total"] == 0
     assert client.get("/unidades", headers=auth("LEITOR"), params={"q": "centro"}).json()["total"] == 1
+
+
+def test_config_de_login_publica(client, monkeypatch):
+    assert client.get("/auth/config").json() == {"modo": "dev"}
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "auth_mode", "keycloak")
+    monkeypatch.setattr(settings, "keycloak_issuer", "https://sso.exemplo/realms/saude")
+    monkeypatch.setattr(settings, "keycloak_client_id", "govcadastral-web")
+    assert client.get("/auth/config").json() == {
+        "modo": "keycloak", "issuer": "https://sso.exemplo/realms/saude", "client_id": "govcadastral-web"}
+    assert client.post("/auth/dev-login", json={"email": "a@b.c", "nome": "A", "papel": "ADMIN"}).status_code == 404
+
+
+def test_front_e_sempre_revalidado(client):
+    assert client.get("/js/login.js").headers["cache-control"] == "no-cache"

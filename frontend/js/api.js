@@ -1,4 +1,5 @@
 import { API_BASE } from './config.js';
+import { renovarToken, urlSaidaSSO } from './sso.js';
 
 const TOKEN_KEY = 'govcad.token';
 
@@ -7,7 +8,7 @@ export const salvarToken = (token) => sessionStorage.setItem(TOKEN_KEY, token);
 
 export function sair() {
   sessionStorage.removeItem(TOKEN_KEY);
-  location.href = 'index.html';
+  location.href = urlSaidaSSO() ?? 'index.html'; // no SSO, encerra também a sessão no Keycloak
 }
 
 export class ApiError extends Error {
@@ -27,7 +28,7 @@ function mensagemDeErro(corpo, status) {
 }
 
 /** Chamada à API com o token Bearer. Lança ApiError em respostas de erro. */
-export async function api(caminho, { method = 'GET', body, params } = {}) {
+export async function api(caminho, { method = 'GET', body, params } = {}, renovou = false) {
   const url = new URL(API_BASE + caminho, location.href);
   for (const [chave, valor] of Object.entries(params || {})) {
     if (valor !== '' && valor != null) url.searchParams.set(chave, valor);
@@ -50,6 +51,8 @@ export async function api(caminho, { method = 'GET', body, params } = {}) {
   }
 
   if (resposta.status === 401 && token) {
+    // token do SSO expirado: renova uma vez e repete a chamada
+    if (!renovou && (await renovarToken())) return api(caminho, { method, body, params }, true);
     sair();
     throw new ApiError(401, 'Sessão expirada. Entre novamente.');
   }

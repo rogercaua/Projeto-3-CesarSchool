@@ -8,6 +8,14 @@ from app.modules.auth.schemas import DevLoginIn, TokenOut, UsuarioOut
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.get("/config")
+def config():
+    """Pública: diz ao front como entrar (login simulado ou SSO do Keycloak)."""
+    if settings.auth_mode == "dev":
+        return {"modo": "dev"}
+    return {"modo": "keycloak", "issuer": settings.keycloak_issuer, "client_id": settings.keycloak_client_id}
+
+
 @router.post("/dev-login", response_model=TokenOut)
 def dev_login(dados: DevLoginIn):
     """Login simulado, só existe com AUTH_MODE=dev."""
