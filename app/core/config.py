@@ -4,6 +4,9 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+CRIPTO_CHAVE_DEV = "ZGV2LXNvbWVudGUtdHJvcXVlLWVzdGEtY2hhdmUtMzI="  # pública: só para desenvolvimento
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -18,7 +21,7 @@ class Settings(BaseSettings):
     jwt_ttl_minutes: int = 480
     # Chave AES-256 (32 bytes em base64) das colunas cifradas; gere com:
     # python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"
-    cripto_chave: str = "ZGV2LXNvbWVudGUtdHJvcXVlLWVzdGEtY2hhdmUtMzI="  # só para desenvolvimento
+    cripto_chave: str = CRIPTO_CHAVE_DEV
     keycloak_issuer: str = ""  # ex.: https://sso.exemplo.gov.br/realms/saude
     keycloak_audience: str = ""  # opcional
 
@@ -26,6 +29,8 @@ class Settings(BaseSettings):
     def _checar_keycloak(self):
         if self.auth_mode == "keycloak" and not self.keycloak_issuer:
             raise ValueError("KEYCLOAK_ISSUER é obrigatório quando AUTH_MODE=keycloak")
+        if self.auth_mode == "keycloak" and self.cripto_chave == CRIPTO_CHAVE_DEV:
+            raise ValueError("Defina CRIPTO_CHAVE: a chave padrão é pública e só serve para desenvolvimento")
         return self
 
 

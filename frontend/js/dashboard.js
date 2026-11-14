@@ -105,7 +105,7 @@ async function carregarEstatisticas() {
     { rotulo: 'Solicitações no período', valor: i.solicitacoes, sub: `${i.solicitacoes_periodo_anterior} no período anterior`, tendencia: i.variacao_pct },
     { rotulo: 'Taxa de aprovação', valor: `${i.taxa_aprovacao}%`, sub: `${i.aprovadas} aprovadas · ${i.rejeitadas} rejeitadas` },
     { rotulo: 'Tempo médio de decisão', valor: i.media_dias_decisao == null ? '—' : `${i.media_dias_decisao} dias`, sub: `${i.em_aberto} ainda em aberto` },
-    { rotulo: 'Unidades com CNES', valor: `${i.pct_com_cnes}%`, sub: `${i.unidades_ativas} ativas de ${i.unidades_total}` },
+    { rotulo: 'Ativas com CNES', valor: `${i.pct_com_cnes}%`, sub: `${i.unidades_ativas} ativas de ${i.unidades_total} unidades` },
   ].map(cardIndicador).join('');
 
   grafico($('#g-mes'), {

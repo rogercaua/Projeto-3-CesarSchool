@@ -85,3 +85,22 @@ def test_crud_usuarios(client, auth):
     assert client.delete(f"/usuarios/{uid}", headers=h).status_code == 204
     admin_id = client.get("/auth/me", headers=h).json()["id"]
     assert client.delete(f"/usuarios/{admin_id}", headers=h).status_code == 409
+
+
+def test_pct_cnes_usa_so_unidades_ativas_e_consulta_avisa_corte(client, auth, criar_unidade, distrito_id):
+    criar_unidade()  # ativa, com CNES
+    with engine.begin() as c:  # inativa e sem CNES: não deve baixar o percentual
+        c.execute(text("INSERT INTO unidades (nome, tipo, distrito_id, status, qtd_equipamentos, qtd_servicos, "
+                       "atualizada_em) VALUES ('UBS Fechada', 'UBS', :d, 'INATIVO', 0, 0, '2026-01-01 00:00:00')"),
+                  {"d": distrito_id})
+    h = auth("GESTOR_INFO")
+    r = client.get("/banco/views/vw_unidades_por_distrito", headers=h).json()
+    linha = dict(zip(r["colunas"], r["linhas"][0]))
+    assert (linha["total_unidades"], linha["pct_com_cnes"], r["truncado"]) == (2, 100.0, False)
+    assert client.get("/dashboard/estatisticas", headers=h).json()["indicadores"]["pct_com_cnes"] == 100.0
+
+    from app.core.database import SessionLocal
+    from app.modules.banco.service import consultar_view
+    client.post("/distritos", headers=auth("ADMIN"), json={"nome": "Distrito Sanitário II"})
+    with SessionLocal() as db:
+        assert consultar_view(db, "vw_unidades_por_distrito", {}, limite=1)["truncado"] is True

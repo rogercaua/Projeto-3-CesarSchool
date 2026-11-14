@@ -211,6 +211,7 @@ As justificativas (`solicitacoes.justificativa`, `decisoes.justificativa`) e os 
 - Cada valor usa um nonce aleatório de 12 bytes, então o mesmo texto gera cifras diferentes.
 - O GCM autentica os dados: um valor alterado direto no banco gera erro na leitura (`InvalidTag`) em vez de ser aceito.
 - A chave fica em `CRIPTO_CHAVE` (32 bytes em base64, fora do banco). Gere uma com `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`. Se a chave for perdida, os dados cifrados não podem ser recuperados.
+- A chave padrão do código é pública e só vale para desenvolvimento: com `AUTH_MODE=keycloak`, a aplicação não inicia sem uma `CRIPTO_CHAVE` própria.
 - Linhas gravadas antes da criptografia continuam legíveis e são cifradas na próxima vez em que forem salvas.
 - Testes: `tests/test_cripto.py` confere que o banco não guarda o texto puro, que o nonce muda e que a adulteração é detectada.
 

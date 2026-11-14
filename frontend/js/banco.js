@@ -14,7 +14,7 @@ let distritosHtml = '';
 const VIEWS = {
   vw_unidades_por_distrito: {
     titulo: 'Unidades por distrito',
-    descricao: 'Total de unidades, ativas, inativas, sem CNES e cobertura do CNES em cada distrito.',
+    descricao: 'Total de unidades, ativas, inativas, ativas sem CNES e % das ativas com CNES em cada distrito.',
     filtros: () => `<select data-f="distrito_id" aria-label="Distrito"><option value="">Todos os distritos</option>${distritosHtml}</select>`,
     grafico: (l) => ({
       type: 'bar',
@@ -108,7 +108,9 @@ async function carregarView() {
     return;
   }
   if (meu !== pedido) return; // chegou uma resposta mais antiga
-  $('#v-contagem').textContent = `${r.linhas.length} linha(s)`;
+  $('#v-contagem').textContent = r.truncado
+    ? `mostrando as primeiras ${r.linhas.length} linhas; use os filtros para ver o restante`
+    : `${r.linhas.length} linha(s)`;
   $('#v-thead').innerHTML = `<tr>${r.colunas.map((c) => `<th>${esc(c)}</th>`).join('')}</tr>`;
   $('#v-tbody').innerHTML = r.linhas.length
     ? r.linhas.map((l) => `<tr>${l.map((v, i) => celula(r.colunas[i], v)).join('')}</tr>`).join('')

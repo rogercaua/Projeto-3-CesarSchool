@@ -279,3 +279,42 @@ def test_auditoria_e_imutavel(client, auth, criar_unidade):
         db.delete(evento)
         with pytest.raises(RuntimeError):
             db.commit()
+
+
+def test_decisao_simultanea_nao_duplica(client, auth, distrito_id):
+    """Simula dois gestores: a sessão do segundo leu a solicitação como PENDENTE antes do primeiro decidir."""
+    from fastapi import HTTPException
+
+    from app.core.database import SessionLocal
+    from app.modules.auth.deps import Principal
+    from app.modules.auth.models import Usuario
+    from app.modules.auth.schemas import Papel
+    from app.modules.solicitacoes import service
+    from app.modules.solicitacoes.models import Decisao, Solicitacao
+    from app.modules.solicitacoes.schemas import DecisaoIn
+
+    sid = client.post("/solicitacoes", headers=auth("EDITOR_TECNICO"), json={
+        "tipo": "INCLUSAO", "justificativa": "Nova",
+        "dados_propostos": {"nome": "UBS Dupla", "tipo": "UBS", "distrito_id": distrito_id},
+    }).json()["id"]
+    client.get("/auth/me", headers=auth("GESTOR_INFO", "segundo@teste.gov.br"))  # cria o segundo gestor
+
+    with SessionLocal() as db:
+        antiga = db.get(Solicitacao, sid)  # leitura antiga; a referência mantém o objeto no cache da sessão
+        assert antiga.status.value == "PENDENTE"
+        assert decidir(client, auth("GESTOR_INFO"), sid).status_code == 200  # o primeiro gestor aprova
+        segundo = Principal(db.query(Usuario).filter_by(email="segundo@teste.gov.br").one(),
+                            frozenset({Papel.GESTOR_INFO}))
+        with pytest.raises(HTTPException) as erro:
+            service.decidir(db, sid, DecisaoIn(resultado="APROVADA", justificativa="Conferido"), segundo)
+        assert erro.value.status_code == 409
+        assert db.query(Decisao).filter_by(solicitacao_id=sid).count() == 1
+
+    unidades = client.get("/unidades", headers=auth("LEITOR"), params={"q": "UBS Dupla"}).json()
+    assert unidades["total"] == 1
+
+
+def test_busca_trata_curingas_como_texto(client, auth, criar_unidade):
+    criar_unidade()
+    assert client.get("/unidades", headers=auth("LEITOR"), params={"q": "%"}).json()["total"] == 0
+    assert client.get("/unidades", headers=auth("LEITOR"), params={"q": "centro"}).json()["total"] == 1

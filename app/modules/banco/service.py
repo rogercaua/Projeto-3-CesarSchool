@@ -1,6 +1,7 @@
 """Views, triggers e procedimentos do banco (SQLite) e as consultas que a interface usa."""
 from datetime import date, timedelta
 from pathlib import Path
+from textwrap import dedent
 
 from fastapi import HTTPException
 from sqlalchemy import DateTime, bindparam, text
@@ -64,8 +65,9 @@ def consultar_view(db: Session, nome: str, filtros: dict, limite: int = 500) -> 
     where = " AND ".join(aceitos[k] for k in usados) or "1 = 1"
     # nome, condições e ordem vêm só do dicionário acima; os valores vão como parâmetros
     resultado = db.execute(text(f"SELECT * FROM {nome} WHERE {where} ORDER BY {ordem} LIMIT :limite"),
-                           {**usados, "limite": limite})
-    return {"colunas": list(resultado.keys()), "linhas": [list(r) for r in resultado]}
+                           {**usados, "limite": limite + 1})  # +1 para saber se cortou
+    linhas = [list(r) for r in resultado]
+    return {"colunas": list(resultado.keys()), "linhas": linhas[:limite], "truncado": len(linhas) > limite}
 
 
 # ---------- procedimentos ----------
@@ -104,31 +106,38 @@ def _periodo(inicio: date | None, fim: date | None) -> tuple[date, date]:
 _FILTRO_SOL = ("date(criada_em, 'localtime') BETWEEN :inicio AND :fim "
                "AND (:distrito_id IS NULL OR distrito_id = :distrito_id)")
 
+# Blocos do sp_relatorio_periodo (também exibidos na tela "Consultas e Banco")
+_SP_RELATORIO_UNIDADES = """
+    SELECT COALESCE(SUM(total_unidades), 0) AS total, COALESCE(SUM(ativas), 0) AS ativas,
+           COALESCE(SUM(sem_cnes), 0) AS sem_cnes,
+           fn_percentual(SUM(ativas) - SUM(sem_cnes), SUM(ativas)) AS pct_com_cnes
+      FROM vw_unidades_por_distrito
+     WHERE :distrito_id IS NULL OR distrito_id = :distrito_id"""
+
+_SP_RELATORIO_SOLICITACOES = f"""
+    SELECT COUNT(*) AS total,
+           SUM(CASE WHEN status = 'APROVADA'  THEN 1 ELSE 0 END) AS aprovadas,
+           SUM(CASE WHEN status = 'REJEITADA' THEN 1 ELSE 0 END) AS rejeitadas,
+           SUM(CASE WHEN status IN ('PENDENTE', 'DEVOLVIDA') THEN 1 ELSE 0 END) AS em_aberto,
+           fn_percentual(SUM(CASE WHEN status = 'APROVADA' THEN 1 ELSE 0 END),
+                         SUM(CASE WHEN status IN ('APROVADA', 'REJEITADA') THEN 1 ELSE 0 END)) AS taxa_aprovacao,
+           ROUND(AVG(dias_ate_decisao), 1) AS media_dias_decisao
+      FROM vw_solicitacoes_detalhadas WHERE {_FILTRO_SOL}"""
+
+# mesmo filtro, com :inicio e :fim do período anterior de mesmo tamanho
+_SP_RELATORIO_ANTERIOR = f"SELECT COUNT(*) AS total FROM vw_solicitacoes_detalhadas WHERE {_FILTRO_SOL}"
+
 
 def sp_relatorio_periodo(db: Session, inicio: date | None, fim: date | None, distrito_id: int | None) -> dict:
     """Indicadores do período, com a variação em relação ao período anterior de mesmo tamanho."""
     inicio, fim = _periodo(inicio, fim)
     p = {"inicio": inicio.isoformat(), "fim": fim.isoformat(), "distrito_id": distrito_id}
 
-    unid = _linhas(db, """
-        SELECT COALESCE(SUM(total_unidades), 0) AS total, COALESCE(SUM(ativas), 0) AS ativas,
-               COALESCE(SUM(sem_cnes), 0) AS sem_cnes,
-               fn_percentual(SUM(total_unidades * pct_com_cnes / 100.0), SUM(total_unidades)) AS pct_com_cnes
-          FROM vw_unidades_por_distrito
-         WHERE :distrito_id IS NULL OR distrito_id = :distrito_id""", **p)[0]
-
-    sol = _linhas(db, f"""
-        SELECT COUNT(*) AS total,
-               SUM(CASE WHEN status = 'APROVADA'  THEN 1 ELSE 0 END) AS aprovadas,
-               SUM(CASE WHEN status = 'REJEITADA' THEN 1 ELSE 0 END) AS rejeitadas,
-               SUM(CASE WHEN status IN ('PENDENTE', 'DEVOLVIDA') THEN 1 ELSE 0 END) AS em_aberto,
-               fn_percentual(SUM(CASE WHEN status = 'APROVADA' THEN 1 ELSE 0 END),
-                             SUM(CASE WHEN status IN ('APROVADA', 'REJEITADA') THEN 1 ELSE 0 END)) AS taxa_aprovacao,
-               ROUND(AVG(dias_ate_decisao), 1) AS media_dias_decisao
-          FROM vw_solicitacoes_detalhadas WHERE {_FILTRO_SOL}""", **p)[0]
+    unid = _linhas(db, _SP_RELATORIO_UNIDADES, **p)[0]
+    sol = _linhas(db, _SP_RELATORIO_SOLICITACOES, **p)[0]
 
     dur = fim - inicio
-    anterior = _linhas(db, f"SELECT COUNT(*) AS total FROM vw_solicitacoes_detalhadas WHERE {_FILTRO_SOL}",
+    anterior = _linhas(db, _SP_RELATORIO_ANTERIOR,
                        inicio=(inicio - dur - timedelta(days=1)).isoformat(),
                        fim=(inicio - timedelta(days=1)).isoformat(), distrito_id=distrito_id)[0]["total"]
     variacao = None if not anterior else round(100.0 * (sol["total"] - anterior) / anterior, 1)
@@ -183,9 +192,10 @@ def series_dashboard(db: Session, inicio: date | None, fim: date | None, distrit
 PROCEDIMENTOS = {
     "sp_relatorio_periodo": ("Indicadores de um período (inicio, fim, distrito_id), com variação "
                              "sobre o período anterior. Somente leitura; alimenta o dashboard.",
-                             "sp_relatorio_periodo"),
+                             ";\n\n".join(dedent(sql).strip() for sql in (
+                                 _SP_RELATORIO_UNIDADES, _SP_RELATORIO_SOLICITACOES, _SP_RELATORIO_ANTERIOR))),
     "sp_cancelar_paradas": ("Cancela solicitações PENDENTE/DEVOLVIDA sem movimentação há mais de N dias. "
-                            "Dispara trg_solicitacao_status_mudou.", _SP_CANCELAR.text.strip()),
+                            "Dispara trg_solicitacao_status_mudou.", dedent(_SP_CANCELAR.text).strip()),
 }
 
 

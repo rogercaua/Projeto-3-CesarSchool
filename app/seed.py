@@ -12,6 +12,7 @@ import random
 import sys
 from datetime import timedelta
 
+from fastapi import HTTPException
 from sqlalchemy import select
 
 import app.models  # noqa: F401
@@ -27,8 +28,8 @@ from app.modules.solicitacoes.models import (
     StatusSolicitacao,
     TipoSolicitacao,
 )
+from app.modules.solicitacoes.service import _aplicar
 from app.modules.unidades.models import StatusUnidade, Unidade
-from app.modules.unidades.service import snapshot
 
 # Distrito -> bairros (uma unidade por bairro; o tipo vem de TIPOS em rodízio)
 BAIRROS = {
@@ -150,39 +151,19 @@ class Gerador:
                 propostos[campo] = max(0, getattr(unidade, campo) + self.rnd.choice([-2, -1, 1, 2, 3]))
         return propostos, {c: getattr(unidade, c) for c in propostos}
 
-    def aplicar(self, s, quando):
-        """Efeito da aprovação no cadastro (o mesmo do serviço real); devolve o snapshot anterior."""
-        if s.tipo == TipoSolicitacao.INCLUSAO:
-            nova = Unidade(**s.dados_propostos, atualizada_em=quando)
-            self.db.add(nova)
-            self.db.flush()
-            s.unidade_id = nova.id
-            self.unidades.append(nova)
-            return None
-        unidade = self.db.get(Unidade, s.unidade_id)
-        anterior = snapshot(unidade)
-        if s.tipo == TipoSolicitacao.INATIVACAO:
-            unidade.status = StatusUnidade.INATIVO
-        elif s.tipo == TipoSolicitacao.REATIVACAO:
-            unidade.status = StatusUnidade.ATIVO
-        else:
-            for campo, valor in s.dados_propostos.items():
-                setattr(unidade, campo, valor)
-        unidade.atualizada_em = quando
-        return anterior
-
     def decidir(self, s, resultado, quando):
         gestor = self.rnd.choice(self.gestores)
         snap = None
         if resultado == ResultadoDecisao.APROVADA:
-            # o cadastro pode ter mudado desde o pedido (ex.: unidade já inativada); nesse caso rejeita
-            unidade = self.db.get(Unidade, s.unidade_id) if s.unidade_id else None
-            invalida = (s.tipo == TipoSolicitacao.INATIVACAO and unidade.status == StatusUnidade.INATIVO) or (
-                s.tipo == TipoSolicitacao.REATIVACAO and unidade.status == StatusUnidade.ATIVO)
-            if invalida:
+            try:
+                snap = _aplicar(self.db, s)  # a mesma regra da aprovação real, com as mesmas validações
+            except HTTPException:  # o cadastro mudou desde o pedido (ex.: unidade já inativada)
                 resultado = ResultadoDecisao.REJEITADA
             else:
-                snap = self.aplicar(s, quando)
+                unidade = self.db.get(Unidade, s.unidade_id)
+                unidade.atualizada_em = quando
+                if s.tipo == TipoSolicitacao.INCLUSAO:
+                    self.unidades.append(unidade)
         justificativa = self.rnd.choice(JUST_GESTOR[resultado])
         self.db.add(Decisao(solicitacao_id=s.id, gestor_id=gestor.id, resultado=resultado,
                             justificativa=justificativa, snapshot_anterior=snap, decidida_em=quando))

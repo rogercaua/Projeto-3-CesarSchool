@@ -26,8 +26,11 @@ def cifrar(valor) -> str:
 
 def decifrar(texto: str):
     if not texto.startswith(_PREFIXO):
-        # linha gravada antes da criptografia: texto puro ou objeto JSON puro
-        return json.loads(texto) if texto[:1] in "{[" and texto else texto
+        # linha gravada antes da criptografia: objeto JSON puro (detalhes) ou texto puro
+        try:
+            return json.loads(texto) if texto[:1] in "{[" else texto
+        except ValueError:  # ex.: justificativa "[URGENTE] ..."
+            return texto
     bruto = base64.b64decode(texto[len(_PREFIXO):])
     return json.loads(_aes.decrypt(bruto[:12], bruto[12:], None))
 

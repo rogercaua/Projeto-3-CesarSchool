@@ -15,7 +15,7 @@ const NOME_CAMPO = { nome: 'Nome', tipo: 'Tipo' };
 try {
   const [divergencias, ativas] = await Promise.all([
     api('/cnes/conciliacao'),
-    api('/unidades', { params: { status: 'ATIVO', limit: 200 } }),
+    api('/unidades', { params: { status: 'ATIVO', limit: 1000 } }),
   ]);
 
   const porId = Object.fromEntries(ativas.itens.map((u) => [u.id, u]));
