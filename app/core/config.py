@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     auth_mode: Literal["dev", "keycloak"] = "dev"
     jwt_secret: str = "troque-esta-chave"  # só usada em modo dev
     jwt_ttl_minutes: int = 480
+    # Chave AES-256 (32 bytes em base64) das colunas cifradas; gere com:
+    # python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"
+    cripto_chave: str = "ZGV2LXNvbWVudGUtdHJvcXVlLWVzdGEtY2hhdmUtMzI="  # só para desenvolvimento
     keycloak_issuer: str = ""  # ex.: https://sso.exemplo.gov.br/realms/saude
     keycloak_audience: str = ""  # opcional
 

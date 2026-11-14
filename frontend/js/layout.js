@@ -32,10 +32,12 @@ function sidebarHtml(usuario, ativo, badge) {
     nav += '<div class="nav-section">Gestão</div>';
     nav += item('pendencias.html', 'pendencias', ativo, 'inbox', 'Central de Pendências', badge);
     nav += item('conciliacao.html', 'conciliacao', ativo, 'refresh', 'Conciliação CNES');
+    nav += item('banco.html', 'banco', ativo, 'database', 'Consultas e Banco');
   }
   if (admin) {
     nav += '<div class="nav-section">Administração</div>';
     nav += item('distritos.html', 'distritos', ativo, 'mapPin', 'Distritos');
+    nav += item('usuarios.html', 'usuarios', ativo, 'users', 'Usuários');
     nav += item('auditoria.html', 'auditoria', ativo, 'fileText', 'Trilha de Auditoria');
   }
 

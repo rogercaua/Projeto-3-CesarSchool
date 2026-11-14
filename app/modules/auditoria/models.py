@@ -2,9 +2,10 @@ from datetime import datetime
 
 from typing import Optional
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, event
+from sqlalchemy import DateTime, ForeignKey, String, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.crypto import Cifrado
 from app.core.database import Base, agora
 
 
@@ -16,7 +17,7 @@ class AuditoriaEvento(Base):
     acao: Mapped[str] = mapped_column(String(50))
     entidade: Mapped[str] = mapped_column(String(50))
     entidade_id: Mapped[int | None]
-    detalhes: Mapped[dict | None] = mapped_column(JSON)
+    detalhes: Mapped[dict | None] = mapped_column(Cifrado)  # AES-256-GCM; repete justificativas
     ocorrido_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
     usuario: Mapped[Optional["Usuario"]] = relationship(lazy="joined")  # noqa: F821

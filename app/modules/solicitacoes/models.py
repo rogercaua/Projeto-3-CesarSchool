@@ -2,9 +2,10 @@ import enum
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Text
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.crypto import Cifrado
 from app.core.database import Base, agora
 
 
@@ -41,7 +42,7 @@ class Solicitacao(Base):
     solicitante_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     dados_atuais: Mapped[dict | None] = mapped_column(JSON)  # valores vigentes dos campos que mudam
     dados_propostos: Mapped[dict | None] = mapped_column(JSON)
-    justificativa: Mapped[str] = mapped_column(Text)
+    justificativa: Mapped[str] = mapped_column(Cifrado)  # AES-256-GCM
     criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
     atualizada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
@@ -79,7 +80,7 @@ class Decisao(Base):
     solicitacao_id: Mapped[int] = mapped_column(ForeignKey("solicitacoes.id"))
     gestor_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     resultado: Mapped[ResultadoDecisao] = mapped_column(Enum(ResultadoDecisao, native_enum=False, length=20))
-    justificativa: Mapped[str] = mapped_column(Text)
+    justificativa: Mapped[str] = mapped_column(Cifrado)  # AES-256-GCM
     # Versão anterior da unidade, guardada ao aprovar (substitui uma tabela de histórico à parte)
     snapshot_anterior: Mapped[dict | None] = mapped_column(JSON)
     decidida_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)

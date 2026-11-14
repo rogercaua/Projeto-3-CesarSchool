@@ -1,7 +1,6 @@
 import { api } from './api.js';
-import { icon } from './icons.js';
 import { iniciarPagina } from './layout.js';
-import { $, esc, toast } from './util.js';
+import { $, abrirModal, esc, toast } from './util.js';
 
 await iniciarPagina('distritos', { papeis: ['ADMIN'] });
 
@@ -35,51 +34,6 @@ async function carregar() {
   }
 }
 
-/** Janela de confirmação. `confirmar` faz a chamada à API; se falhar, o erro aparece na própria janela. */
-function abrirModal({ cor, titulo, sub, botao, nomeIcone, corpo = '', confirmar }) {
-  const raiz = document.createElement('div');
-  raiz.className = 'modal-root';
-  raiz.innerHTML = `
-    <div class="modal-backdrop"></div>
-    <form class="modal" role="dialog" aria-modal="true" autocomplete="off">
-      <div class="modal-head ${cor}"><h3>${esc(titulo)}</h3><p>${esc(sub)}</p></div>
-      <div class="modal-body">
-        ${corpo}
-        <div class="form-error" id="m-erro" hidden></div>
-        <div class="modal-actions">
-          <button type="submit" class="btn btn-${cor}" id="m-ok">${icon(nomeIcone)}${esc(botao)}</button>
-          <button type="button" class="btn btn-ghost" id="m-cancelar">Cancelar</button>
-        </div>
-      </div>
-      <div class="modal-foot">Esta ação gerará um registro imutável na Trilha de Auditoria.</div>
-    </form>`;
-  document.body.appendChild(raiz);
-
-  const fechar = () => { raiz.remove(); document.removeEventListener('keydown', aoTeclar); };
-  const aoTeclar = (e) => e.key === 'Escape' && fechar();
-  document.addEventListener('keydown', aoTeclar);
-  raiz.querySelector('.modal-backdrop').onclick = fechar;
-  raiz.querySelector('#m-cancelar').onclick = fechar;
-
-  const ok = raiz.querySelector('#m-ok');
-  raiz.querySelector('form').onsubmit = async (e) => {
-    e.preventDefault();
-    const erro = raiz.querySelector('#m-erro');
-    erro.hidden = true;
-    ok.disabled = true;
-    try {
-      await confirmar(raiz);
-      fechar();
-      await carregar();
-    } catch (err) {
-      erro.textContent = err.message;
-      erro.hidden = false;
-      ok.disabled = false;
-    }
-  };
-  (raiz.querySelector('input') ?? ok).focus();
-}
-
 function editar(d) {
   abrirModal({
     cor: 'amber',
@@ -89,6 +43,7 @@ function editar(d) {
     nomeIcone: 'check',
     corpo: `<label class="lbl" for="m-nome">Nome <span class="req">*</span></label>
       <input type="text" id="m-nome" maxlength="100" value="${esc(d.nome)}">`,
+    depois: carregar,
     confirmar: async (raiz) => {
       const nome = nomeValido(raiz.querySelector('#m-nome').value);
       await api(`/distritos/${d.id}`, { method: 'PUT', body: { nome } });
@@ -105,6 +60,7 @@ function excluir(d) {
     botao: 'Excluir',
     nomeIcone: 'x',
     corpo: '<p>Só é possível excluir distritos sem unidades vinculadas. Deseja continuar?</p>',
+    depois: carregar,
     confirmar: async () => {
       await api(`/distritos/${d.id}`, { method: 'DELETE' });
       toast('Distrito excluído.', 'ok');
