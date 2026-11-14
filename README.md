@@ -86,7 +86,8 @@ frontend/
 - O token fica no `sessionStorage` e é enviado como `Authorization: Bearer`. Sem sessão, toda página volta ao login.
 - A barra lateral e as ações mudam conforme o papel; o backend continua sendo quem autoriza de fato.
 - Para servir o front em outro lugar (ex.: Live Server), ajuste `API_BASE` em `frontend/js/config.js` e inclua a origem em `CORS_ORIGINS`.
-- O login do front usa `POST /auth/dev-login`. Com `AUTH_MODE=keycloak` essa rota não existe; o login real exigiria o fluxo OIDC do Keycloak (por exemplo, `keycloak-js`), que ainda não foi implementado.
+- A tela de login pergunta ao backend o modo ativo (`GET /auth/config`). Em `AUTH_MODE=dev` mostra o login simulado com escolha de perfil; em `AUTH_MODE=keycloak` mostra só o botão do SSO (ver [Login pelo Keycloak](#login-pelo-keycloak)).
+- O servidor manda `Cache-Control: no-cache` nos arquivos do front: depois de atualizar o código, o navegador nunca mistura HTML novo com JS antigo.
 - Os módulos JS exigem http(s): abrir os arquivos direto pelo disco (`file://`) não funciona.
 - Os gráficos usam Chart.js 4.4.1 carregado do cdnjs; sem internet, as páginas funcionam e mostram um aviso no lugar dos gráficos.
 
@@ -121,6 +122,7 @@ frontend/
 
 | Método e rota | Descrição |
 |---|---|
+| `GET /auth/config` | Público: modo de login (`dev` ou `keycloak`, com issuer e client_id) |
 | `POST /auth/dev-login` | Token de teste (só com `AUTH_MODE=dev`) |
 | `GET /auth/me` | Usuário e papéis do token |
 | `GET /dashboard/resumo` | Cards da tela inicial |
@@ -220,6 +222,30 @@ As justificativas (`solicitacoes.justificativa`, `decisoes.justificativa`) e os 
 - `AUTH_MODE=dev`: login simulado, equivalente ao "simular perfil" do protótipo. Não use em produção.
 - `AUTH_MODE=keycloak`: valida tokens RS256 pelo JWKS do realm (`KEYCLOAK_ISSUER`). Os papéis são lidos de `realm_access.roles`, então crie no Keycloak os quatro papéis com os mesmos nomes. O usuário local é criado no primeiro acesso.
 
+### Login pelo Keycloak
+
+Com `AUTH_MODE=keycloak`, a tela de login esconde o e-mail e os perfis simulados e mostra só **Entrar com o SSO da Prefeitura**. O fluxo é o OIDC Authorization Code com PKCE, sem biblioteca (`frontend/js/sso.js`):
+
+1. O botão leva à página de login do Keycloak; a senha é digitada só lá.
+2. O Keycloak volta para `index.html` com um código; o front confere o `state` e troca o código pelos tokens.
+3. Quando o access token expira (401), o front usa o refresh token uma vez e repete a chamada.
+4. **Sair** encerra também a sessão no Keycloak.
+
+Variáveis: `AUTH_MODE=keycloak`, `KEYCLOAK_ISSUER`, `KEYCLOAK_CLIENT_ID` e uma `CRIPTO_CHAVE` própria (a aplicação não inicia sem elas).
+
+No Keycloak, crie o cliente do front assim:
+
+| Configuração | Valor |
+|---|---|
+| Client ID | o mesmo de `KEYCLOAK_CLIENT_ID` (ex.: `govcadastral-web`) |
+| Client authentication | desligado (cliente público) |
+| Standard flow | ligado; PKCE method `S256` |
+| Valid redirect URIs | `http://localhost:8000/*` |
+| Valid post logout redirect URIs | `http://localhost:8000/*` |
+| Web origins | `http://localhost:8000` (libera o CORS da troca do código) |
+
+Os tokens ficam no `sessionStorage` da aba (somem ao fechá-la). O refresh token fica ali também; o front escapa todo dado vindo da API, que é a defesa contra quem tentasse lê-lo por XSS.
+
 ## O que foi simplificado em relação ao ER
 
 | ER original | Aqui | Motivo |
@@ -235,6 +261,5 @@ As justificativas (`solicitacoes.justificativa`, `decisoes.justificativa`) e os 
 ## Pendência
 
 - `app/modules/cnes/client.py` usa **dados simulados**. Troque o método `buscar` pela chamada real à API do CNES.
-- O login do front é o simulado (dev). A integração com o SSO do Keycloak no navegador ainda não existe.
 - Telas do Figma sem endpoint: a parte de "Perfis" da tela "Usuários e Perfis" (os papéis são geridos no Keycloak; o cadastro de usuários existe) e o botão "Criar solicitação" da conciliação (só o editor cria solicitações, e o editor não acessa a conciliação).
 - Sem migrações (Alembic), sem Docker e sem notificações; entram quando forem necessários.

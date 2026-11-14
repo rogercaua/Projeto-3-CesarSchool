@@ -62,6 +62,15 @@ def favicon():
 
 # Front-end estático (HTML/CSS/JS) servido na mesma origem da API, sem CORS.
 # Fica por último para não sobrepor nenhuma rota da API.
+class _FrontSemCache(StaticFiles):
+    """O navegador revalida cada arquivo (resposta 304 se não mudou): HTML e JS nunca ficam de versões diferentes."""
+
+    async def get_response(self, path, scope):
+        resposta = await super().get_response(path, scope)
+        resposta.headers["Cache-Control"] = "no-cache"
+        return resposta
+
+
 _FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 if _FRONTEND.is_dir():
-    app.mount("/", StaticFiles(directory=_FRONTEND, html=True), name="frontend")
+    app.mount("/", _FrontSemCache(directory=_FRONTEND, html=True), name="frontend")

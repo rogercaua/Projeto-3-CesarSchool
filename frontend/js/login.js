@@ -1,5 +1,6 @@
 import { api, getToken, salvarToken } from './api.js';
 import { icon } from './icons.js';
+import { concluirSSO, entrarSSO } from './sso.js';
 import { $, $$, esc } from './util.js';
 
 const PERFIS = [
@@ -11,10 +12,12 @@ const PERFIS = [
 
 $$('[data-icon]').forEach((el) => (el.innerHTML = icon(el.dataset.icon)));
 
-// Já autenticado? Vai direto ao dashboard.
-if (getToken()) {
-  api('/auth/me').then(() => location.replace('dashboard.html')).catch(() => {});
+function mostrarErro(mensagem) {
+  $('#erro').textContent = mensagem;
+  $('#erro').hidden = !mensagem;
 }
+
+// ---------- modo dev: login simulado com escolha de perfil ----------
 
 let perfil = PERFIS[2];
 
@@ -35,27 +38,61 @@ function desenharPerfis() {
 const nomeDoEmail = (email) =>
   email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Usuário';
 
-$('#email').value = perfil.email;
-desenharPerfis();
+async function entrarDev() {
+  const email = $('#email').value.trim();
+  if (!email) throw new Error('Informe o e-mail.');
+  const nome = email === perfil.email ? perfil.nome : nomeDoEmail(email);
+  const { access_token } = await api('/auth/dev-login', { method: 'POST', body: { email, nome, papel: perfil.papel } });
+  salvarToken(access_token);
+}
+
+// ---------- início: o backend diz qual modo está ativo ----------
+
+let cfg;
+try {
+  cfg = await api('/auth/config');
+} catch (e) {
+  $('#banner').textContent = 'Servidor indisponível';
+  mostrarErro(e.message);
+  throw e;
+}
+
+if (cfg.modo === 'keycloak') {
+  $('#banner').textContent = 'Autenticação via Keycloak · SSO Municipal';
+  $('#sso-msg').hidden = false;
+  $('#entrar').textContent = 'Entrar com o SSO da Prefeitura';
+  try {
+    if (await concluirSSO(cfg)) location.replace('dashboard.html'); // voltando do Keycloak com o código
+  } catch (e) {
+    mostrarErro(e.message);
+  }
+} else {
+  $('#banner').textContent = 'Modo desenvolvimento · login simulado';
+  $('#dev').hidden = false;
+  $('#email').value = perfil.email;
+  $('#entrar').textContent = 'Entrar';
+  desenharPerfis();
+}
+$('#entrar').disabled = false;
+
+// Já autenticado? Vai direto ao dashboard.
+if (getToken()) {
+  api('/auth/me').then(() => location.replace('dashboard.html')).catch(() => {});
+}
 
 $('#form-login').onsubmit = async (e) => {
   e.preventDefault();
-  const erro = $('#erro');
-  erro.hidden = true;
-  const email = $('#email').value.trim();
-  const nome = email === perfil.email ? perfil.nome : nomeDoEmail(email);
-
+  mostrarErro('');
   $('#entrar').disabled = true;
   try {
-    const { access_token } = await api('/auth/dev-login', { method: 'POST', body: { email, nome, papel: perfil.papel } });
-    salvarToken(access_token);
-    location.href = 'dashboard.html';
+    if (cfg.modo === 'keycloak') {
+      await entrarSSO(cfg); // sai da página; o retorno é tratado por concluirSSO
+    } else {
+      await entrarDev();
+      location.href = 'dashboard.html';
+    }
   } catch (err) {
-    erro.textContent =
-      err.status === 404
-        ? 'O login simulado está desativado neste servidor (AUTH_MODE=keycloak). Use o SSO institucional.'
-        : err.message;
-    erro.hidden = false;
+    mostrarErro(err.message);
     $('#entrar').disabled = false;
   }
 };

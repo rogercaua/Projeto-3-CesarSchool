@@ -24,11 +24,12 @@ class Settings(BaseSettings):
     cripto_chave: str = CRIPTO_CHAVE_DEV
     keycloak_issuer: str = ""  # ex.: https://sso.exemplo.gov.br/realms/saude
     keycloak_audience: str = ""  # opcional
+    keycloak_client_id: str = ""  # cliente público do front (login no navegador)
 
     @model_validator(mode="after")
     def _checar_keycloak(self):
-        if self.auth_mode == "keycloak" and not self.keycloak_issuer:
-            raise ValueError("KEYCLOAK_ISSUER é obrigatório quando AUTH_MODE=keycloak")
+        if self.auth_mode == "keycloak" and not (self.keycloak_issuer and self.keycloak_client_id):
+            raise ValueError("KEYCLOAK_ISSUER e KEYCLOAK_CLIENT_ID são obrigatórios quando AUTH_MODE=keycloak")
         if self.auth_mode == "keycloak" and self.cripto_chave == CRIPTO_CHAVE_DEV:
             raise ValueError("Defina CRIPTO_CHAVE: a chave padrão é pública e só serve para desenvolvimento")
         return self
