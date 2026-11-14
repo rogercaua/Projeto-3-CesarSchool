@@ -11,7 +11,9 @@ SELECT d.id                                                              AS dist
        SUM(CASE WHEN u.status = 'ATIVO' THEN 1 ELSE 0 END)               AS ativas,
        SUM(CASE WHEN u.status = 'INATIVO' THEN 1 ELSE 0 END)             AS inativas,
        SUM(CASE WHEN u.status = 'ATIVO' AND u.codigo_cnes IS NULL THEN 1 ELSE 0 END) AS sem_cnes,
-       fn_percentual(SUM(CASE WHEN u.codigo_cnes IS NOT NULL THEN 1 ELSE 0 END), COUNT(u.id)) AS pct_com_cnes,
+       -- mesma base de sem_cnes: só unidades ativas
+       fn_percentual(SUM(CASE WHEN u.status = 'ATIVO' AND u.codigo_cnes IS NOT NULL THEN 1 ELSE 0 END),
+                     SUM(CASE WHEN u.status = 'ATIVO' THEN 1 ELSE 0 END)) AS pct_com_cnes,
        COALESCE(SUM(u.qtd_equipamentos), 0)                              AS equipamentos,
        COALESCE(SUM(u.qtd_servicos), 0)                                  AS servicos
 FROM distritos d

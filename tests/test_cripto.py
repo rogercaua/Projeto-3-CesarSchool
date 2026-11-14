@@ -32,3 +32,18 @@ def test_cifra_usa_nonce_novo_e_detecta_adulteracao():
 def test_linhas_antigas_em_texto_puro_continuam_legiveis():
     assert decifrar("justificativa antiga") == "justificativa antiga"
     assert decifrar('{"a": 1}') == {"a": 1}
+
+
+def test_texto_antigo_que_parece_json_nao_quebra_a_leitura():
+    assert decifrar("[URGENTE] trocar CNES") == "[URGENTE] trocar CNES"
+
+
+def test_modo_keycloak_recusa_a_chave_de_desenvolvimento():
+    from pydantic import ValidationError
+
+    from app.core.config import Settings
+
+    with pytest.raises(ValidationError, match="CRIPTO_CHAVE"):
+        Settings(auth_mode="keycloak", keycloak_issuer="https://sso.exemplo/realms/x")
+    chave = "A" * 43 + "="
+    assert Settings(auth_mode="keycloak", keycloak_issuer="https://sso.exemplo/realms/x", cripto_chave=chave)

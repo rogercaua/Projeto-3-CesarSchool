@@ -2,7 +2,7 @@
 import enum
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.database import agora
@@ -237,10 +237,18 @@ def decidir(db: Session, solicitacao_id: int, dados: DecisaoIn, principal: Princ
     if s.solicitante_id == principal.id:
         raise HTTPException(403, "Separação de funções: você não pode decidir a sua própria solicitação")
 
-    anterior = _aplicar(db, s) if dados.resultado == ResultadoDecisao.APROVADA else None
+    # Troca o status só se ainda estiver PENDENTE, num único UPDATE: se dois gestores decidirem
+    # ao mesmo tempo, o segundo não altera nenhuma linha e recebe 409 (sem decisão nem cadastro duplicados).
+    mudou = db.execute(
+        update(Solicitacao)
+        .where(Solicitacao.id == s.id, Solicitacao.status == StatusSolicitacao.PENDENTE)
+        .values(status=StatusSolicitacao(dados.resultado.value), atualizada_em=agora())
+    ).rowcount
+    if not mudou:
+        db.rollback()
+        raise HTTPException(409, "A solicitação já foi decidida por outra pessoa")
 
-    s.status = StatusSolicitacao(dados.resultado.value)
-    s.atualizada_em = agora()
+    anterior = _aplicar(db, s) if dados.resultado == ResultadoDecisao.APROVADA else None
     db.add(Decisao(
         solicitacao_id=s.id,
         gestor_id=principal.id,

@@ -177,7 +177,7 @@ async function buscarCnes() {
 
 // ───────── Inicialização ─────────
 try {
-  const [distritos, lista] = await Promise.all([api('/distritos'), api('/unidades', { params: { limit: 200 } })]);
+  const [distritos, lista] = await Promise.all([api('/distritos'), api('/unidades', { params: { limit: 1000 } })]);
   unidades = lista.itens;
 
   $('#f-tipo').innerHTML = TIPOS_UNIDADE.map((t) => `<option>${esc(t)}</option>`).join('');

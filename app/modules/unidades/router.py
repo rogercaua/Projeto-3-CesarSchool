@@ -20,7 +20,8 @@ def listar(
     status: StatusUnidade | None = None,
     sem_cnes: bool = False,
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    # shortcut: os seletores do front pedem todas as unidades de uma vez; acima de 1000, trocar por busca
+    limit: int = Query(50, ge=1, le=1000),
     db: Session = Depends(get_db),
     _: Principal = Depends(usuario_atual),
 ):

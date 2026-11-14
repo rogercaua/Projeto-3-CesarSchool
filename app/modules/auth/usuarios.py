@@ -54,7 +54,7 @@ def _checar_email(db: Session, email: str, ignorar_id: int | None = None) -> Non
 def listar(q: str = "", db: Session = Depends(get_db), _: Principal = Depends(_ADMIN)):
     consulta = select(Usuario).order_by(Usuario.nome)
     if q:
-        consulta = consulta.where(or_(Usuario.nome.ilike(f"%{q}%"), Usuario.email.ilike(f"%{q}%")))
+        consulta = consulta.where(or_(Usuario.nome.icontains(q, autoescape=True), Usuario.email.icontains(q, autoescape=True)))
     return db.scalars(consulta).all()
 
 

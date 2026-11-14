@@ -1,11 +1,11 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.database import agora, get_db
+from app.core.database import get_db
 from app.modules.auth.deps import Principal, usuario_atual
 from app.modules.banco import service as banco
 from app.modules.solicitacoes.models import Solicitacao, StatusSolicitacao
@@ -24,7 +24,9 @@ class Resumo(BaseModel):
 @router.get("/resumo", response_model=Resumo)
 def resumo(db: Session = Depends(get_db), _: Principal = Depends(usuario_atual)):
     ativa = Unidade.status == StatusUnidade.ATIVO
-    inicio_mes = agora().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # início do mês no fuso do servidor, convertido para UTC (o fuso em que as datas são gravadas)
+    local = datetime.now().astimezone()
+    inicio_mes = local.replace(day=1, hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
     def contar(tabela, *cond):
         return db.scalar(select(func.count()).select_from(tabela).where(*cond))

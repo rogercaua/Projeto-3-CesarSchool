@@ -20,7 +20,7 @@ def listar(
     if q and q.strip():
         termo = q.strip()
         por_id = re.fullmatch(r"[uU](\d+)", termo)  # busca por "U001"
-        cond.append(Unidade.id == int(por_id.group(1)) if por_id else Unidade.nome.ilike(f"%{termo}%"))
+        cond.append(Unidade.id == int(por_id.group(1)) if por_id else Unidade.nome.icontains(termo, autoescape=True))
     if distrito_id is not None:
         cond.append(Unidade.distrito_id == distrito_id)
     if tipo:
