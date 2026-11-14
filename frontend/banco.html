@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultas e Banco · GovCadastral</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div>
+          <h1>Consultas e Banco de Dados</h1>
+          <p>Views, procedimentos, funções e triggers do banco (SQLite)</p>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="card">
+          <div class="card-head"><h3>Consultas (views)</h3><span class="mono xs muted" id="v-contagem"></span></div>
+          <div class="tabs" id="v-abas" role="tablist"></div>
+          <p class="xs muted" style="padding: 12px 20px 0" id="v-descricao"></p>
+          <div class="filters" id="v-filtros"></div>
+          <div class="chart-box small"><canvas id="v-grafico" role="img" aria-label="Gráfico da consulta"></canvas></div>
+          <div class="table-wrap">
+            <table class="data"><thead id="v-thead"></thead><tbody id="v-tbody"></tbody></table>
+          </div>
+          <details class="obj"><summary>Ver SQL da view</summary><pre class="sql" id="v-sql"></pre></details>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h3>Procedimentos</h3><span class="xs muted">blocos SQL parametrizados executados numa transação</span></div>
+          <div class="pad form-stack" style="padding: 20px">
+            <div>
+              <div class="form-card-title">sp_relatorio_periodo</div>
+              <p class="xs muted" id="sp1-desc"></p>
+              <div class="filters" style="padding: 8px 0">
+                <label class="mini">De <input type="date" id="sp1-inicio"></label>
+                <label class="mini">até <input type="date" id="sp1-fim"></label>
+                <select id="sp1-distrito" aria-label="Distrito"><option value="">Todos os distritos</option></select>
+                <button type="button" class="btn btn-primary btn-xs" id="sp1-exec">Executar</button>
+              </div>
+              <div class="table-wrap" id="sp1-res"></div>
+            </div>
+            <div id="sp2" hidden>
+              <div class="form-card-title">sp_cancelar_paradas</div>
+              <p class="xs muted" id="sp2-desc"></p>
+              <div class="filters" style="padding: 8px 0">
+                <label class="mini">Sem movimentação há mais de <input type="number" id="sp2-dias" value="30" min="1" max="3650" style="width: 90px; padding: 5px 10px"> dias</label>
+                <button type="button" class="btn btn-red btn-xs" id="sp2-exec">Executar</button>
+              </div>
+              <div class="resultado" id="sp2-res" hidden></div>
+            </div>
+          </div>
+          <details class="obj"><summary>Ver SQL dos procedimentos</summary><div id="sp-sql"></div></details>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h3>Funções SQL</h3><span class="xs muted">registradas na conexão e usadas pelas views</span></div>
+          <div class="filters">
+            <select id="fn-nome" aria-label="Função"></select>
+            <input type="text" id="fn-a0" aria-label="Argumento 1" style="width: 180px; padding: 6px 12px">
+            <input type="text" id="fn-a1" aria-label="Argumento 2" style="width: 180px; padding: 6px 12px">
+            <button type="button" class="btn btn-primary btn-xs" id="fn-exec">Executar</button>
+            <span class="resultado" id="fn-res">SELECT …</span>
+          </div>
+          <p class="xs muted" style="padding: 0 16px 16px" id="fn-desc"></p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h3>Triggers</h3><span class="mono xs muted" id="t-contagem"></span></div>
+          <div id="t-lista"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <h3>Efeito dos triggers: histórico de status</h3>
+            <div class="search-box" style="max-width: 260px"><span data-icon="search"></span><input type="text" id="h-protocolo" placeholder="Protocolo (SOL-2026-0001)"></div>
+          </div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead><tr><th>Quando</th><th>Protocolo</th><th>De</th><th>Para</th></tr></thead>
+              <tbody id="h-tbody"></tbody>
+            </table>
+          </div>
+          <div class="card-foot"><span class="xs muted">Linhas inseridas por trg_solicitacao_status_inicial e trg_solicitacao_status_mudou</span></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div id="toast-root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script type="module" src="js/banco.js"></script>
+</body>
+</html>

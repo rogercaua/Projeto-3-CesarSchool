@@ -10,6 +10,9 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.modules.auditoria.router import router as auditoria_router
 from app.modules.auth.router import router as auth_router
+from app.modules.auth.usuarios import router as usuarios_router
+from app.modules.banco.router import router as banco_router
+from app.modules.banco.service import instalar as instalar_objetos_sql
 from app.modules.cnes.router import router as cnes_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.distritos.router import router as distritos_router
@@ -20,6 +23,7 @@ from app.modules.unidades.router import router as unidades_router
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(engine)  # simples para o início; use Alembic quando o esquema estabilizar
+    instalar_objetos_sql(engine)  # views e triggers (app/modules/banco/sql)
     yield
 
 
@@ -40,6 +44,8 @@ for router in (
     cnes_router,
     distritos_router,
     auditoria_router,
+    usuarios_router,
+    banco_router,
 ):
     app.include_router(router)
 

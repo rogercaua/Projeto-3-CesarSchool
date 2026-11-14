@@ -329,6 +329,21 @@ table.data.red td { border-top-color: #fef2f2; }
 .login-body .btn { width: 100%; }
 .login-foot { text-align: center; color: var(--blue-400); font-size: 12px; margin-top: 20px; }
 
+/* ───────── Gráficos e consultas ───────── */
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.chart-box { position: relative; height: 280px; padding: 16px 20px; }
+.chart-box.small { height: 220px; }
+.stat .tendencia { font-family: var(--font-mono); font-size: 12px; margin-top: 4px; }
+.tendencia.sobe { color: var(--green-700); }
+.tendencia.desce { color: var(--red-600); }
+.filters input[type=date] { width: auto; border: 1px solid var(--slate-200); border-radius: 8px; padding: 5px 10px; font-family: inherit; color: var(--slate-700); }
+.filters label.mini { font-size: 12px; color: var(--slate-500); display: flex; align-items: center; gap: 6px; }
+pre.sql { margin: 0; padding: 12px 16px; background: var(--slate-900); color: #e2e8f0; font-family: var(--font-mono); font-size: 12px; overflow-x: auto; white-space: pre; }
+details.obj { border-top: 1px solid var(--slate-100); }
+details.obj summary { padding: 10px 20px; cursor: pointer; display: flex; gap: 12px; align-items: center; font-size: 14px; }
+details.obj summary .d { color: var(--slate-400); font-size: 12px; }
+.resultado { font-family: var(--font-mono); font-size: 13px; color: var(--slate-700); background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 8px; padding: 10px 14px; }
+
 /* ───────── Responsivo ───────── */
 @media (max-width: 960px) {
   .app { flex-direction: column; height: auto; overflow: visible; }
@@ -337,5 +352,5 @@ table.data.red td { border-top-color: #fef2f2; }
   .nav-section { display: none; }
   .main { overflow: visible; }
   .stats, .stats.three { grid-template-columns: 1fr 1fr; }
-  .meta, .grid-2 { grid-template-columns: 1fr; }
+  .meta, .grid-2, .charts { grid-template-columns: 1fr; }
 }

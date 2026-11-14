@@ -21,6 +21,50 @@
       <div class="content">
         <section class="stats" id="stats"></section>
 
+        <section class="card filters" aria-label="Filtros do painel estatístico">
+          <div class="filters-label"><span data-icon="filter"></span>Período</div>
+          <label class="mini">De <input type="date" id="p-inicio"></label>
+          <label class="mini">até <input type="date" id="p-fim"></label>
+          <select id="p-atalho" aria-label="Atalho de período">
+            <option value="">Atalhos…</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 3 meses</option>
+            <option value="180">Últimos 6 meses</option>
+            <option value="365">Últimos 12 meses</option>
+          </select>
+          <select id="p-distrito" aria-label="Distrito"><option value="">Todos os distritos</option></select>
+          <span class="xs muted">Clique numa barra do gráfico de distritos para filtrar por ele.</span>
+        </section>
+
+        <section class="stats" id="indicadores"></section>
+
+        <section class="charts">
+          <div class="card">
+            <div class="card-head"><h3>Solicitações por mês</h3><span class="xs muted">criadas × aprovadas × rejeitadas</span></div>
+            <div class="chart-box"><canvas id="g-mes" aria-label="Solicitações por mês" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Situação das solicitações</h3><span class="xs muted">status atual</span></div>
+            <div class="chart-box"><canvas id="g-status" aria-label="Solicitações por status" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Unidades por distrito</h3><span class="xs muted">ativas × inativas</span></div>
+            <div class="chart-box"><canvas id="g-distrito" aria-label="Unidades por distrito" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Tipos de solicitação</h3><span class="xs muted">no período</span></div>
+            <div class="chart-box"><canvas id="g-tipo" aria-label="Solicitações por tipo" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Decisões por gestor</h3><span class="xs muted">no período</span></div>
+            <div class="chart-box"><canvas id="g-gestor" aria-label="Decisões por gestor" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Cobertura do CNES por distrito</h3><span class="xs muted">% de unidades com código</span></div>
+            <div class="chart-box"><canvas id="g-cnes" aria-label="Percentual de unidades com CNES por distrito" role="img"></canvas></div>
+          </div>
+        </section>
+
         <section class="card filters">
           <div class="filters-label"><span data-icon="filter"></span>Filtros</div>
           <div class="search-box"><span data-icon="search"></span><input type="text" id="f-busca" placeholder="Buscar por nome ou ID..."></div>
@@ -57,6 +101,7 @@
     </main>
   </div>
   <div id="toast-root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>

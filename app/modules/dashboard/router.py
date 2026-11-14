@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -5,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import agora, get_db
 from app.modules.auth.deps import Principal, usuario_atual
+from app.modules.banco import service as banco
 from app.modules.solicitacoes.models import Solicitacao, StatusSolicitacao
 from app.modules.unidades.models import StatusUnidade, Unidade
 
@@ -32,3 +35,18 @@ def resumo(db: Session = Depends(get_db), _: Principal = Depends(usuario_atual))
         solicitacoes_pendentes=contar(Solicitacao, Solicitacao.status == StatusSolicitacao.PENDENTE),
         atualizadas_no_mes=contar(Unidade, Unidade.atualizada_em >= inicio_mes),
     )
+
+
+@router.get("/estatisticas")
+def estatisticas(
+    inicio: date | None = None,
+    fim: date | None = None,
+    distrito_id: int | None = None,
+    db: Session = Depends(get_db),
+    _: Principal = Depends(usuario_atual),
+):
+    """Indicadores (procedimento sp_relatorio_periodo) e séries dos gráficos, filtrados por período e distrito."""
+    return {
+        "indicadores": banco.sp_relatorio_periodo(db, inicio, fim, distrito_id),
+        **banco.series_dashboard(db, inicio, fim, distrito_id),
+    }
