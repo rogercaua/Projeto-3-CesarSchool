@@ -9,7 +9,7 @@ solicitação → análise do gestor (aprovar, devolver ou rejeitar) → atualiz
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 cp .env.example .env                                   # Windows: copy .env.example .env
-python -m app.seed                                     # dados de exemplo + histórico para o dashboard (opcional)
+python -m app.seed                                     # dados de exemplo (opcional; use --recriar para apagar e refazer)
 uvicorn app.main:app --reload
 ```
 
@@ -20,13 +20,32 @@ uvicorn app.main:app --reload
 
 Para ver o fluxo completo, entre em abas anônimas diferentes com os perfis **Editor Técnico** (abre a solicitação), **Gestor de Informação** (aprova, devolve ou rejeita) e **Administrador** (auditoria).
 
+### Dados de exemplo
+
+`python -m app.seed` popula um banco vazio; `python -m app.seed --recriar` **apaga todas as tabelas** e popula de novo. Os dados são sempre os mesmos (semente fixa):
+
+- 8 distritos sanitários e unidades em bairros de Recife (cerca de 1/4 sem CNES, algumas inativas);
+- cerca de 250 solicitações nos últimos 18 meses, com mais pedidos nos meses recentes, dos 4 tipos;
+- todos os fluxos: decisão direta, devolução seguida de reenvio e nova decisão, devolvidas aguardando o editor, canceladas pelo solicitante e pendentes recentes;
+- aprovações aplicadas ao cadastro (inclusões viram unidades, inativações mudam o status), com snapshot na decisão;
+- histórico de status (gravado pelos triggers) e trilha de auditoria com as datas de cada evento.
+
+Para entrar como um dos usuários do seed, use no login o e-mail e o papel abaixo (o papel vem do login, não do banco):
+
+| Papel | E-mail |
+|---|---|
+| EDITOR_TECNICO | carla.menezes@recife.pe.gov.br, bruno.albuquerque@recife.pe.gov.br, juliana.farias@recife.pe.gov.br |
+| GESTOR_INFO | helena.cavalcanti@recife.pe.gov.br, marcos.vasconcelos@recife.pe.gov.br, patricia.lins@recife.pe.gov.br |
+| ADMIN | rafael.siqueira@recife.pe.gov.br |
+| LEITOR | luana.barros@recife.pe.gov.br |
+
 ## Estrutura
 
 ```
 app/
   main.py            monta a aplicação e inclui os routers
   models.py          importa todos os modelos (create_all, seed, futuras migrações)
-  seed.py            dados de exemplo e histórico de demonstração (60 solicitações em 10 meses)
+  seed.py            dados de exemplo (65 unidades de Recife, 8 usuários, 250 solicitações em 18 meses)
   core/              config, banco, JWT, criptografia (AES-GCM), schema de paginação
   modules/
     auth/            usuário local, papéis (RBAC), dependências de segurança e CRUD de usuários
