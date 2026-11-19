@@ -46,6 +46,16 @@ async function entrarDev() {
   salvarToken(access_token);
 }
 
+// ---------- modo ldap: usuário e senha conferidos contra o servidor LDAP ----------
+
+async function entrarLdap() {
+  const usuario = $('#ldap-usuario').value.trim();
+  const senha = $('#ldap-senha').value;
+  if (!usuario || !senha) throw new Error('Informe usuário e senha.');
+  const { access_token } = await api('/auth/ldap-login', { method: 'POST', body: { usuario, senha } });
+  salvarToken(access_token);
+}
+
 // ---------- início: o backend diz qual modo está ativo ----------
 
 let cfg;
@@ -66,6 +76,10 @@ if (cfg.modo === 'keycloak') {
   } catch (e) {
     mostrarErro(e.message);
   }
+} else if (cfg.modo === 'ldap') {
+  $('#banner').textContent = 'Autenticação via LDAP';
+  $('#ldap').hidden = false;
+  $('#entrar').textContent = 'Entrar';
 } else {
   $('#banner').textContent = 'Modo desenvolvimento · login simulado';
   $('#dev').hidden = false;
@@ -87,6 +101,9 @@ $('#form-login').onsubmit = async (e) => {
   try {
     if (cfg.modo === 'keycloak') {
       await entrarSSO(cfg); // sai da página; o retorno é tratado por concluirSSO
+    } else if (cfg.modo === 'ldap') {
+      await entrarLdap();
+      location.href = 'dashboard.html';
     } else {
       await entrarDev();
       location.href = 'dashboard.html';

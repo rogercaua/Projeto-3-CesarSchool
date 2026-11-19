@@ -1,0 +1,89 @@
+dn: dc=governanca,dc=local
+objectClass: dcObject
+objectClass: organization
+o: Governanca ESF
+dc: governanca
+
+dn: ou=people,dc=governanca,dc=local
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=governanca,dc=local
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=admin.teste,ou=people,dc=governanca,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: admin.teste
+cn: Admin Teste
+sn: Teste
+mail: admin.teste@governanca.local
+uidNumber: 10001
+gidNumber: 10001
+homeDirectory: /home/admin.teste
+userPassword: Senha123!
+
+dn: uid=gestor.teste,ou=people,dc=governanca,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: gestor.teste
+cn: Gestor Teste
+sn: Teste
+mail: gestor.teste@governanca.local
+uidNumber: 10002
+gidNumber: 10002
+homeDirectory: /home/gestor.teste
+userPassword: Senha123!
+
+dn: uid=editor.teste,ou=people,dc=governanca,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: editor.teste
+cn: Editor Teste
+sn: Teste
+mail: editor.teste@governanca.local
+uidNumber: 10003
+gidNumber: 10003
+homeDirectory: /home/editor.teste
+userPassword: Senha123!
+
+dn: uid=leitor.teste,ou=people,dc=governanca,dc=local
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: leitor.teste
+cn: Leitor Teste
+sn: Teste
+mail: leitor.teste@governanca.local
+uidNumber: 10004
+gidNumber: 10004
+homeDirectory: /home/leitor.teste
+userPassword: Senha123!
+
+dn: cn=ADMIN,ou=groups,dc=governanca,dc=local
+objectClass: posixGroup
+cn: ADMIN
+gidNumber: 10001
+memberUid: admin.teste
+
+dn: cn=GESTOR_INFO,ou=groups,dc=governanca,dc=local
+objectClass: posixGroup
+cn: GESTOR_INFO
+gidNumber: 10002
+memberUid: gestor.teste
+
+dn: cn=EDITOR_TECNICO,ou=groups,dc=governanca,dc=local
+objectClass: posixGroup
+cn: EDITOR_TECNICO
+gidNumber: 10003
+memberUid: editor.teste
+
+dn: cn=LEITOR,ou=groups,dc=governanca,dc=local
+objectClass: posixGroup
+cn: LEITOR
+gidNumber: 10004
+memberUid: leitor.teste

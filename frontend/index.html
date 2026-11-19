@@ -31,6 +31,17 @@
               <p class="field-msg">Login simulado: não há senha; o perfil escolhido vira o papel do token.</p>
             </div>
           </div>
+          <!-- Só no modo ldap: usuário e senha são conferidos contra o servidor LDAP. -->
+          <div id="ldap" hidden>
+            <div>
+              <label class="lbl" for="ldap-usuario">Usuário</label>
+              <input type="text" id="ldap-usuario" autocomplete="username">
+            </div>
+            <div>
+              <label class="lbl" for="ldap-senha">Senha</label>
+              <input type="password" id="ldap-senha" autocomplete="current-password">
+            </div>
+          </div>
           <p class="field-msg" id="sso-msg" hidden>Você será levado à página de login da Prefeitura e voltará para cá depois de entrar.</p>
           <div class="form-error" id="erro" hidden></div>
           <button type="submit" class="btn btn-primary" id="entrar" disabled>Entrar</button>

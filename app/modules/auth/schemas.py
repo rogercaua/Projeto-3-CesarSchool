@@ -1,6 +1,6 @@
 import enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Papel(str, enum.Enum):
@@ -10,10 +10,18 @@ class Papel(str, enum.Enum):
     LEITOR = "LEITOR"
 
 
+PAPEIS_VALIDOS = {p.value for p in Papel}
+
+
 class DevLoginIn(BaseModel):
     email: str
     nome: str
     papel: Papel
+
+
+class LdapLoginIn(BaseModel):
+    usuario: str = Field(min_length=1, max_length=150)
+    senha: str = Field(min_length=1, max_length=200)
 
 
 class TokenOut(BaseModel):

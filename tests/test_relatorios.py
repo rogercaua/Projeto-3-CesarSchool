@@ -1,0 +1,88 @@
+from datetime import datetime, timezone
+
+import pytest
+from botocore.exceptions import ClientError
+
+from app.core.config import settings
+from app.modules.relatorios import service
+
+
+class S3Falso:
+    def __init__(self):
+        self.objetos = {}
+        self.put_object_chamadas = []
+
+    def put_object(self, Bucket, Key, Body, ContentType):
+        self.put_object_chamadas.append({"Bucket": Bucket, "Key": Key, "Body": Body, "ContentType": ContentType})
+        self.objetos[Key] = {"Key": Key, "Size": len(Body), "LastModified": datetime.now(timezone.utc)}
+
+    def list_objects_v2(self, Bucket, Prefix, MaxKeys):
+        return {"Contents": [v for k, v in self.objetos.items() if k.startswith(Prefix)][:MaxKeys]}
+
+
+@pytest.fixture()
+def s3(monkeypatch):
+    falso = S3Falso()
+    monkeypatch.setattr(settings, "s3_bucket", "bucket-teste")
+    monkeypatch.setattr(service, "boto3", _StubBoto3(falso))
+    return falso
+
+
+class _StubBoto3:
+    def __init__(self, cliente):
+        self._cliente = cliente
+
+    def client(self, *args, **kwargs):
+        return self._cliente
+
+
+def test_exportar_sem_bucket_configurado_falha(client, auth, monkeypatch):
+    monkeypatch.setattr(settings, "s3_bucket", "")
+    r = client.post("/relatorios/exportar", headers=auth("ADMIN"))
+    assert r.status_code == 500
+
+
+def test_exportar_envia_csv_para_o_s3(client, auth, s3):
+    r = client.post("/relatorios/exportar", headers=auth("GESTOR_INFO"))
+    assert r.status_code == 200
+    corpo = r.json()
+    assert corpo["bucket"] == "bucket-teste"
+    assert corpo["chave"].startswith("relatorios/periodo_")
+    assert corpo["chave"].endswith(".csv")
+    assert corpo["tamanho_bytes"] > 0
+
+    assert len(s3.put_object_chamadas) == 1
+    chamada = s3.put_object_chamadas[0]
+    assert chamada["Bucket"] == "bucket-teste"
+    assert chamada["ContentType"] == "text/csv"
+    assert b"unidades_total" in chamada["Body"]
+
+    eventos = client.get("/auditoria", headers=auth("ADMIN")).json()["itens"]
+    assert eventos[0]["acao"] == "RELATORIO_EXPORTADO"
+    assert eventos[0]["detalhes"]["bucket"] == "bucket-teste"
+
+
+def test_listar_relatorios_exportados(client, auth, s3):
+    client.post("/relatorios/exportar", headers=auth("ADMIN"))
+    r = client.get("/relatorios", headers=auth("GESTOR_INFO"))
+    assert r.status_code == 200
+    itens = r.json()["itens"]
+    assert len(itens) == 1
+    assert itens[0]["chave"].startswith("relatorios/periodo_")
+
+
+def test_exportar_exige_papel_de_gestor_ou_admin(client, auth, s3):
+    for papel in ("LEITOR", "EDITOR_TECNICO"):
+        assert client.post("/relatorios/exportar", headers=auth(papel)).status_code == 403
+        assert client.get("/relatorios", headers=auth(papel)).status_code == 403
+
+
+def test_exportar_propaga_erro_do_s3_como_502(client, auth, monkeypatch):
+    class S3ComErro:
+        def put_object(self, **kwargs):
+            raise ClientError({"Error": {"Code": "AccessDenied", "Message": "nope"}}, "PutObject")
+
+    monkeypatch.setattr(settings, "s3_bucket", "bucket-teste")
+    monkeypatch.setattr(service, "boto3", _StubBoto3(S3ComErro()))
+    r = client.post("/relatorios/exportar", headers=auth("ADMIN"))
+    assert r.status_code == 502

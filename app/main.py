@@ -16,6 +16,7 @@ from app.modules.banco.service import instalar as instalar_objetos_sql
 from app.modules.cnes.router import router as cnes_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.distritos.router import router as distritos_router
+from app.modules.relatorios.router import router as relatorios_router
 from app.modules.solicitacoes.router import router as solicitacoes_router
 from app.modules.unidades.router import router as unidades_router
 
@@ -46,6 +47,7 @@ for router in (
     auditoria_router,
     usuarios_router,
     banco_router,
+    relatorios_router,
 ):
     app.include_router(router)
 

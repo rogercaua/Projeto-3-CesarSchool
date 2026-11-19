@@ -221,6 +221,15 @@ As justificativas (`solicitacoes.justificativa`, `decisoes.justificativa`) e os 
 
 - `AUTH_MODE=dev`: login simulado, equivalente ao "simular perfil" do protótipo. Não use em produção.
 - `AUTH_MODE=keycloak`: valida tokens RS256 pelo JWKS do realm (`KEYCLOAK_ISSUER`). Os papéis são lidos de `realm_access.roles`, então crie no Keycloak os quatro papéis com os mesmos nomes. O usuário local é criado no primeiro acesso.
+- `AUTH_MODE=ldap`: `POST /auth/ldap-login` recebe usuário/senha, faz o bind contra `LDAP_URL` (`app/modules/auth/ldap_client.py`, biblioteca `ldap3`) e lê os grupos `posixGroup` (`memberUid`) do usuário em `LDAP_GROUP_SEARCH_BASE`. Os nomes de grupo que baterem com o enum `Papel` viram os papéis do token local emitido (mesmo formato HS256 do modo `dev`). Variáveis: `AUTH_MODE=ldap`, `LDAP_URL`, `LDAP_BASE_DN` (obrigatórias); `LDAP_USER_DN_TEMPLATE` e `LDAP_GROUP_SEARCH_BASE` têm padrão (`uid={username},ou=people,{base_dn}` e `ou=groups,{base_dn}`) e só precisam mudar se a árvore do seu LDAP for diferente. Veja `infra/openldap/` para subir um servidor de teste.
+
+Independentemente do modo, todo login bem-sucedido grava/atualiza as tabelas locais `grupos` e `usuario_grupo` (`app/modules/auth/service.py::sincronizar_usuario`) com os papéis daquele login — ver a seção abaixo sobre o que isso mudou em relação ao ER original.
+
+## Exportação de relatórios para a nuvem (S3)
+
+`POST /relatorios/exportar` (papel `GESTOR_INFO` ou `ADMIN`) gera o mesmo relatório de indicadores do dashboard (`sp_relatorio_periodo`, com os parâmetros opcionais `inicio`, `fim`, `distrito_id`) como CSV e envia para o Amazon S3 via `boto3` (`app/modules/relatorios/service.py`); `GET /relatorios` lista o que já foi exportado. Cada exportação também vira um evento em `/auditoria`.
+
+Variáveis: `AWS_REGION` e `S3_BUCKET` (bucket precisa já existir). As credenciais da AWS **não** entram nas variáveis do projeto — o `boto3` lê `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_SESSION_TOKEN` direto do ambiente (é assim que funcionam as credenciais temporárias do AWS Academy Learner Lab) ou de `~/.aws/credentials`. Cada chamada ao S3 é assinada com AWS Signature Version 4 pelo próprio `boto3`.
 
 ### Login pelo Keycloak
 
@@ -250,7 +259,7 @@ Os tokens ficam no `sessionStorage` da aba (somem ao fechá-la). O refresh token
 
 | ER original | Aqui | Motivo |
 |---|---|---|
-| `grupo`, `papel`, `usuario_papel` | Papéis vêm do token; `usuarios` guarda só o espelho do Keycloak | O Keycloak já é a fonte dos papéis |
+| `grupo`, `papel`, `usuario_papel` | `grupos` + `usuario_grupo` (`app/modules/auth/models.py`) | Espelho local, reescrito a cada login a partir do IdP (Keycloak ou LDAP) — a fonte da verdade continua sendo o IdP, não uma tela de CRUD de papéis aqui |
 | `equipe`, `profissional` | Fora do escopo | Nenhuma tela ou fluxo do protótipo usa |
 | `equipamento`, `servico` | `qtd_equipamentos` e `qtd_servicos` na unidade | O dashboard só exibe quantidades |
 | `pendencia` | A decisão `DEVOLVIDA` e sua justificativa fazem esse papel | Evita uma tabela para o mesmo conceito |

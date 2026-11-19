@@ -1,4 +1,4 @@
-"""Criação (modo dev) e validação (dev/Keycloak) de tokens JWT."""
+"""Criação (modo dev/ldap, local) e validação (dev/ldap/Keycloak) de tokens JWT."""
 import time
 
 import jwt
@@ -6,11 +6,12 @@ from jwt import PyJWKClient
 
 from app.core.config import settings
 
-_ALGORITMO_DEV = "HS256"
+_ALGORITMO_LOCAL = "HS256"
 _jwks: PyJWKClient | None = None
 
 
-def criar_token_dev(sub: str, email: str, nome: str, papeis: list[str]) -> str:
+def criar_token_local(sub: str, email: str, nome: str, papeis: list[str]) -> str:
+    """Token assinado com a chave local (HS256): usado pelo login simulado (dev) e pelo login LDAP."""
     agora = int(time.time())
     claims = {
         "sub": sub,
@@ -20,14 +21,14 @@ def criar_token_dev(sub: str, email: str, nome: str, papeis: list[str]) -> str:
         "iat": agora,
         "exp": agora + settings.jwt_ttl_minutes * 60,
     }
-    return jwt.encode(claims, settings.jwt_secret, algorithm=_ALGORITMO_DEV)
+    return jwt.encode(claims, settings.jwt_secret, algorithm=_ALGORITMO_LOCAL)
 
 
 def decodificar_token(token: str) -> dict:
     """Levanta jwt.PyJWTError se o token for inválido."""
     global _jwks
-    if settings.auth_mode == "dev":
-        return jwt.decode(token, settings.jwt_secret, algorithms=[_ALGORITMO_DEV])
+    if settings.auth_mode in ("dev", "ldap"):
+        return jwt.decode(token, settings.jwt_secret, algorithms=[_ALGORITMO_LOCAL])
 
     if _jwks is None:
         _jwks = PyJWKClient(f"{settings.keycloak_issuer}/protocol/openid-connect/certs")

@@ -8,11 +8,10 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decodificar_token
 from app.modules.auth.models import Usuario
-from app.modules.auth.schemas import Papel
+from app.modules.auth.schemas import PAPEIS_VALIDOS, Papel
 from app.modules.auth.service import sincronizar_usuario
 
 _bearer = HTTPBearer(auto_error=False)
-_PAPEIS_VALIDOS = {p.value for p in Papel}
 
 
 @dataclass(frozen=True)
@@ -41,11 +40,11 @@ def usuario_atual(
         raise HTTPException(401, "Token inválido ou expirado", headers=cabecalho)
 
     papeis = frozenset(
-        Papel(r) for r in claims.get("realm_access", {}).get("roles", []) if r in _PAPEIS_VALIDOS
+        Papel(r) for r in claims.get("realm_access", {}).get("roles", []) if r in PAPEIS_VALIDOS
     )
     if not papeis:
         raise HTTPException(403, "Usuário sem papel válido no sistema")
-    return Principal(sincronizar_usuario(db, claims), papeis)
+    return Principal(sincronizar_usuario(db, claims, papeis), papeis)
 
 
 def exigir(*permitidos: Papel):
