@@ -17,6 +17,12 @@ const ACOES = {
   DISTRITO_CRIADO: 'Distrito criado',
   DISTRITO_ATUALIZADO: 'Distrito atualizado',
   DISTRITO_EXCLUIDO: 'Distrito excluído',
+  USUARIO_CRIADO: 'Usuário criado',
+  USUARIO_ATUALIZADO: 'Usuário atualizado',
+  USUARIO_EXCLUIDO: 'Usuário excluído',
+  USUARIO_ANONIMIZADO: 'Usuário anonimizado (LGPD)',
+  LOGIN: 'Login',
+  LOGIN_FALHOU: 'Login recusado',
 };
 
 function detalhes(d) {
