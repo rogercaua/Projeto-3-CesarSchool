@@ -143,6 +143,7 @@ frontend/
 | `GET /dashboard/estatisticas` | Indicadores e séries dos gráficos, filtros `inicio`, `fim`, `distrito_id` |
 | `GET/POST /usuarios` | Lista (filtro `q`) e cria usuário (admin) |
 | `PUT/DELETE /usuarios/{id}` | Edita e exclui usuário (admin) |
+| `POST /usuarios/{id}/anonimizacao` | Apaga nome, e-mail e login do usuário e mantém o histórico (LGPD, admin) |
 | `GET /banco/objetos` | Views, triggers, funções e procedimentos com o SQL de cada um |
 | `GET /banco/views/{nome}` | Consulta uma view com os filtros que ela aceita |
 | `POST /banco/funcoes/{nome}` | Executa uma função SQL com `{"argumentos": [...]}` |
@@ -224,6 +225,13 @@ As justificativas (`solicitacoes.justificativa`, `decisoes.justificativa`) e os 
 - `AUTH_MODE=ldap`: `POST /auth/ldap-login` recebe usuário/senha, faz o bind contra `LDAP_URL` (`app/modules/auth/ldap_client.py`, biblioteca `ldap3`) e lê os grupos `posixGroup` (`memberUid`) do usuário em `LDAP_GROUP_SEARCH_BASE`. Os nomes de grupo que baterem com o enum `Papel` viram os papéis do token local emitido (mesmo formato HS256 do modo `dev`). Variáveis: `AUTH_MODE=ldap`, `LDAP_URL`, `LDAP_BASE_DN` (obrigatórias); `LDAP_USER_DN_TEMPLATE` e `LDAP_GROUP_SEARCH_BASE` têm padrão (`uid={username},ou=people,{base_dn}` e `ou=groups,{base_dn}`) e só precisam mudar se a árvore do seu LDAP for diferente. Veja `infra/openldap/` para subir um servidor de teste.
 
 Independentemente do modo, todo login bem-sucedido grava/atualiza as tabelas locais `grupos` e `usuario_grupo` (`app/modules/auth/service.py::sincronizar_usuario`) com os papéis daquele login — ver a seção abaixo sobre o que isso mudou em relação ao ER original.
+
+## Segurança e Auditoria
+
+Riscos, RACI, ISO 38500, COBIT, LGPD, plano de auditoria e continuidade estão em [`SEGURANCA_E_AUDITORIA.md`](SEGURANCA_E_AUDITORIA.md) (e o PDF ao lado). No código:
+
+- Login LDAP aceito ou recusado vira evento `LOGIN` / `LOGIN_FALHOU` na auditoria (usuário e IP, nunca a senha).
+- Backup do SQLite: `python -m app.backup [--destino backups] [--manter 7]` (cópia consistente com o app no ar, conferida com `PRAGMA integrity_check`).
 
 ## Exportação de relatórios para a nuvem (S3)
 

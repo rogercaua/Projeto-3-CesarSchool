@@ -102,3 +102,22 @@ def excluir(usuario_id: int, db: Session = Depends(get_db), principal: Principal
     registrar(db, principal.id, "USUARIO_EXCLUIDO", "usuario", usuario.id, {"nome": usuario.nome, "email": usuario.email})
     db.delete(usuario)
     db.commit()
+
+
+@router.post("/{usuario_id}/anonimizacao", response_model=UsuarioAdminOut)
+def anonimizar(usuario_id: int, db: Session = Depends(get_db), principal: Principal = Depends(_ADMIN)):
+    """LGPD (art. 18, IV e VI): apaga nome, e-mail e identificador de login do titular,
+    mantendo o registro para que solicitações, decisões e auditoria continuem íntegras.
+    Um novo login com a mesma conta cria outro usuário, sem ligação com este."""
+    usuario = _obter(db, usuario_id)
+    if usuario.id == principal.id:
+        raise HTTPException(409, "Você não pode anonimizar o próprio usuário")
+    if usuario.keycloak_id.startswith("anonimizado:"):
+        raise HTTPException(409, "Usuário já anonimizado")
+    usuario.nome = f"Usuário anonimizado #{usuario.id}"
+    usuario.email = f"anonimizado-{usuario.id}@invalido"
+    usuario.keycloak_id = f"anonimizado:{usuario.id}"
+    usuario.grupos = []
+    registrar(db, principal.id, "USUARIO_ANONIMIZADO", "usuario", usuario.id)  # sem dados pessoais
+    db.commit()
+    return usuario

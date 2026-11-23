@@ -29,6 +29,7 @@ async function carregar() {
               <td>
                 <button type="button" class="btn btn-ghost btn-xs" data-acao="editar" data-id="${u.id}">Editar</button>
                 <button type="button" class="btn btn-ghost btn-xs" data-acao="excluir" data-id="${u.id}" ${u.id === eu.id ? 'disabled' : ''}>Excluir</button>
+                <button type="button" class="btn btn-ghost btn-xs" data-acao="anonimizar" data-id="${u.id}" ${u.id === eu.id || u.keycloak_id.startsWith('anonimizado:') ? 'disabled' : ''}>Anonimizar</button>
               </td></tr>`,
           )
           .join('')
@@ -73,11 +74,29 @@ function excluir(u) {
   });
 }
 
+function anonimizar(u) {
+  abrirModal({
+    cor: 'red',
+    titulo: 'Anonimizar Usuário (LGPD)',
+    sub: u.nome,
+    botao: 'Anonimizar',
+    nomeIcone: 'x',
+    corpo: '<p>Nome, e-mail e login serão apagados de forma definitiva. Solicitações, decisões e auditoria continuam no histórico, sem identificar a pessoa. Deseja continuar?</p>',
+    depois: carregar,
+    confirmar: async () => {
+      await api(`/usuarios/${u.id}/anonimizacao`, { method: 'POST' });
+      toast('Usuário anonimizado.', 'ok');
+    },
+  });
+}
+
+const ACOES_LINHA = { editar, excluir, anonimizar };
+
 $('#tbody').onclick = (e) => {
   const botao = e.target.closest('[data-acao]');
   if (!botao) return;
   const u = usuarios.find((x) => String(x.id) === botao.dataset.id);
-  if (u) (botao.dataset.acao === 'editar' ? editar : excluir)(u);
+  if (u) ACOES_LINHA[botao.dataset.acao](u);
 };
 
 $('#f-busca').oninput = debounce(carregar);
