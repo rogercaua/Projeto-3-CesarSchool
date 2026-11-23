@@ -277,6 +277,6 @@ Os tokens ficam no `sessionStorage` da aba (somem ao fechá-la). O refresh token
 
 ## Pendência
 
-- `app/modules/cnes/client.py` usa **dados simulados**. Troque o método `buscar` pela chamada real à API do CNES.
-- Telas do Figma sem endpoint: a parte de "Perfis" da tela "Usuários e Perfis" (os papéis são geridos no Keycloak; o cadastro de usuários existe) e o botão "Criar solicitação" da conciliação (só o editor cria solicitações, e o editor não acessa a conciliação).
+- `app/modules/cnes/client.py` usa **dados simulados**.
+- 
 - Sem migrações (Alembic), sem Docker e sem notificações; entram quando forem necessários.
