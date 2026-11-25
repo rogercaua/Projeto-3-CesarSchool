@@ -1,39 +1,8 @@
-from datetime import datetime, timezone
-
-import pytest
 from botocore.exceptions import ClientError
 
 from app.core.config import settings
 from app.modules.relatorios import service
-
-
-class S3Falso:
-    def __init__(self):
-        self.objetos = {}
-        self.put_object_chamadas = []
-
-    def put_object(self, Bucket, Key, Body, ContentType):
-        self.put_object_chamadas.append({"Bucket": Bucket, "Key": Key, "Body": Body, "ContentType": ContentType})
-        self.objetos[Key] = {"Key": Key, "Size": len(Body), "LastModified": datetime.now(timezone.utc)}
-
-    def list_objects_v2(self, Bucket, Prefix, MaxKeys):
-        return {"Contents": [v for k, v in self.objetos.items() if k.startswith(Prefix)][:MaxKeys]}
-
-
-@pytest.fixture()
-def s3(monkeypatch):
-    falso = S3Falso()
-    monkeypatch.setattr(settings, "s3_bucket", "bucket-teste")
-    monkeypatch.setattr(service, "boto3", _StubBoto3(falso))
-    return falso
-
-
-class _StubBoto3:
-    def __init__(self, cliente):
-        self._cliente = cliente
-
-    def client(self, *args, **kwargs):
-        return self._cliente
+from tests.conftest import _StubBoto3
 
 
 def test_exportar_sem_bucket_configurado_falha(client, auth, monkeypatch):

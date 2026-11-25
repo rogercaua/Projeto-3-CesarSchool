@@ -31,6 +31,7 @@ Controle das mudanças no cadastro de unidades de saúde: **solicitação → an
 - [Autenticação](#autenticação)
 - [Segurança e Auditoria](#segurança-e-auditoria)
 - [Exportação para a nuvem (S3)](#exportação-para-a-nuvem-s3)
+- [Autorização M2M (OAuth2 Client Credentials)](#autorização-m2m-oauth2-client-credentials)
 - [Diferenças em relação ao ER](#diferenças-em-relação-ao-er)
 - [Pendências](#pendências)
 
@@ -199,6 +200,8 @@ Páginas estáticas servidas pelo próprio FastAPI na raiz (`/`): sem CORS e sem
 | Exportar relatórios para o S3 | | ✅ | ✅ | |
 | Executar `sp_cancelar_paradas` | | | ✅ | |
 
+> `POST /relatorios/exportar-m2m` não é desta tabela: quem autoriza é o escopo `relatorios:exportar` do client OAuth2 M2M, não o papel de uma pessoa — ver [Autorização M2M](#autorização-m2m-oauth2-client-credentials).
+
 ---
 
 ## Endpoints
@@ -279,6 +282,7 @@ Exemplo de alteração (só os campos enviados em `dados_propostos` mudam):
 | `GET` | `/banco/historico-status` | Histórico de status gravado pelos triggers (filtro `protocolo`) |
 | `POST` | `/relatorios/exportar` | Gera o relatório do período em CSV e envia ao S3 |
 | `GET` | `/relatorios` | Lista os relatórios já exportados |
+| `POST` | `/relatorios/exportar-m2m` | Mesma exportação, autorizada via OAuth2 M2M (`client_credentials`) em vez de login humano |
 
 </details>
 
@@ -431,6 +435,50 @@ Variáveis: `AWS_REGION` e `S3_BUCKET` (o bucket precisa existir).
 
 > [!NOTE]
 > As credenciais da AWS **não** ficam nas variáveis do projeto. O `boto3` lê `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN` do ambiente (como nas credenciais temporárias do AWS Academy Learner Lab) ou de `~/.aws/credentials`, e assina cada chamada com AWS Signature Version 4.
+
+### Autorização M2M (OAuth2 Client Credentials)
+
+`POST /relatorios/exportar-m2m` faz a mesma exportação, mas pensada para **outro serviço chamar, sem usuário logado**: em vez de um token de login, espera um access token OAuth2 emitido pelo Authorization Server (o mesmo Keycloak do SSO, reaproveitado) via `grant_type=client_credentials`.
+
+```mermaid
+sequenceDiagram
+    participant Job as Serviço M2M
+    participant AS as Authorization Server (Keycloak)
+    participant API as GovCadastral
+    participant S3 as Amazon S3
+
+    Job->>AS: POST /token (client_id + client_secret, grant_type=client_credentials)
+    AS-->>Job: access_token (RS256, escopo relatorios:exportar)
+    Job->>API: POST /relatorios/exportar-m2m (Authorization: Bearer access_token)
+    API->>API: valida assinatura (JWKS), emissor, client e escopo
+    API->>S3: put_object (boto3 / SigV4)
+    API-->>Job: 200 (bucket, chave, url)
+```
+
+- `app/modules/auth/oauth2_m2m.py` valida o token (JWKS do emissor, client autorizado e escopo `relatorios:exportar`) e devolve um `ClientM2M`, sem criar usuário nem papel — é o equivalente, para serviços, do `Principal`/`exigir(*papeis)` usado para pessoas.
+- A autorização é por **escopo do client**, não por papel: quem tem o escopo pode chamar, independentemente de `AUTH_MODE` (funciona mesmo com `dev` ou `ldap` para os usuários humanos).
+- Cada chamada vira um evento `RELATORIO_EXPORTADO_M2M` na auditoria, com o `client_id` no lugar do usuário.
+- Variáveis: `OAUTH2_M2M_ISSUER` (vazio usa `KEYCLOAK_ISSUER`) e `OAUTH2_M2M_CLIENT_ID` (opcional; restringe a um client específico).
+
+<details>
+<summary><b>Configurar o client M2M no Keycloak</b></summary>
+
+No realm já usado pelo SSO (veja `infra/keycloak/`):
+
+1. **Clients → Create client**, Client ID `govcadastral-m2m`, tipo **confidencial**.
+2. Em **Capability config**, desligue *Standard flow* e *Direct access grants*; ligue **Service accounts roles** (é isso que habilita o grant `client_credentials`).
+3. Em **Client scopes**, crie (ou use) um scope `relatorios:exportar` e inclua-o como *Default* no client `govcadastral-m2m` — ele passa a sair no claim `scope` do token.
+4. Em **Credentials**, copie o *Client secret*.
+5. Peça um token (de outro serviço, de um script ou de um `curl` de teste):
+   ```bash
+   curl -X POST "$KEYCLOAK_ISSUER/protocol/openid-connect/token" \
+     -d grant_type=client_credentials \
+     -d client_id=govcadastral-m2m \
+     -d client_secret=<o secret copiado>
+   ```
+6. Use o `access_token` da resposta em `Authorization: Bearer <token>` no `POST /relatorios/exportar-m2m`.
+
+</details>
 
 ---
 

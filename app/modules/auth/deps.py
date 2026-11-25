@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decodificar_token
+from app.modules.auth import oauth2_m2m
 from app.modules.auth.models import Usuario
 from app.modules.auth.schemas import PAPEIS_VALIDOS, Papel
 from app.modules.auth.service import sincronizar_usuario
@@ -54,5 +55,25 @@ def exigir(*permitidos: Papel):
         if not principal.tem(*permitidos):
             raise HTTPException(403, "Seu papel não tem permissão para esta ação")
         return principal
+
+    return verificar
+
+
+def exigir_escopo_m2m(escopo: str):
+    """Dependência M2M: valida o access_token OAuth2 (client_credentials, sem usuário por
+    trás) e só deixa passar quem tem o escopo informado — o equivalente, para serviços,
+    ao `exigir(*papeis)` usado para pessoas."""
+
+    def verificar(credenciais: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> oauth2_m2m.ClientM2M:
+        cabecalho = {"WWW-Authenticate": "Bearer"}
+        if credenciais is None:
+            raise HTTPException(401, "Token ausente", headers=cabecalho)
+        try:
+            cliente = oauth2_m2m.validar(credenciais.credentials)
+        except oauth2_m2m.TokenM2MInvalido as erro:
+            raise HTTPException(401, str(erro), headers=cabecalho)
+        if not cliente.tem_escopo(escopo):
+            raise HTTPException(403, f"Client sem o escopo '{escopo}'")
+        return cliente
 
     return verificar

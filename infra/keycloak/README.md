@@ -57,6 +57,25 @@ No console admin do Keycloak:
    `http://127.0.0.1:5500/index.html` em dev).
 6. Crie um usuário de teste em **Users** com uma senha.
 
+## 4.1 Client M2M (OAuth2 client_credentials, para `POST /relatorios/exportar-m2m`)
+
+Mesmo realm, client separado:
+
+1. **Clients → Create client**, Client ID `govcadastral-m2m`, tipo **confidencial**.
+2. Em **Capability config**, desligue *Standard flow* e *Direct access grants*;
+   ligue **Service accounts roles** (habilita o grant `client_credentials`).
+3. Em **Client scopes**, crie um scope `relatorios:exportar` (tipo *Default*) e
+   inclua-o no client `govcadastral-m2m` — ele passa a sair no claim `scope`
+   do token emitido para esse client.
+4. Em **Credentials**, copie o *Client secret*.
+5. Teste pedindo um token direto:
+   ```bash
+   curl -X POST "http://<ip-da-instancia>/realms/saude/protocol/openid-connect/token" \
+     -d grant_type=client_credentials -d client_id=govcadastral-m2m -d client_secret=<secret>
+   ```
+   e chamando a API com `Authorization: Bearer <access_token>` em
+   `POST /relatorios/exportar-m2m`.
+
 ## 5. Apontar o projeto para este Keycloak
 
 No `.env` do `Projeto-3-CesarSchool`:
@@ -66,6 +85,11 @@ AUTH_MODE=keycloak
 KEYCLOAK_ISSUER=http://<ip-da-instancia>/realms/saude
 KEYCLOAK_CLIENT_ID=govcadastral-web
 CRIPTO_CHAVE=<gere com: python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())">
+
+# Opcional: só precisa se o Authorization Server do M2M for outro Keycloak/realm.
+# Vazio (padrão) reaproveita KEYCLOAK_ISSUER acima para validar o token do /relatorios/exportar-m2m.
+OAUTH2_M2M_ISSUER=
+OAUTH2_M2M_CLIENT_ID=govcadastral-m2m
 ```
 
 ## Limitações do Learner Lab

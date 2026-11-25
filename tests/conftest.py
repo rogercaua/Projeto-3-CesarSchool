@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 # Configuração de teste: banco em memória e login simulado (antes de importar o app)
 os.environ["DATABASE_URL"] = "sqlite://"
@@ -8,8 +9,10 @@ os.environ["JWT_SECRET"] = "segredo-de-teste"
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.core.database import Base, engine
 from app.main import app
+from app.modules.relatorios import service as relatorios_service
 
 
 @pytest.fixture()
@@ -55,3 +58,33 @@ def criar_unidade(client, auth, distrito_id):
         return d.json()["unidade_id"]
 
     return _criar
+
+
+class S3Falso:
+    def __init__(self):
+        self.objetos = {}
+        self.put_object_chamadas = []
+
+    def put_object(self, Bucket, Key, Body, ContentType):
+        self.put_object_chamadas.append({"Bucket": Bucket, "Key": Key, "Body": Body, "ContentType": ContentType})
+        self.objetos[Key] = {"Key": Key, "Size": len(Body), "LastModified": datetime.now(timezone.utc)}
+
+    def list_objects_v2(self, Bucket, Prefix, MaxKeys):
+        return {"Contents": [v for k, v in self.objetos.items() if k.startswith(Prefix)][:MaxKeys]}
+
+
+class _StubBoto3:
+    def __init__(self, cliente):
+        self._cliente = cliente
+
+    def client(self, *args, **kwargs):
+        return self._cliente
+
+
+@pytest.fixture()
+def s3(monkeypatch):
+    """Dubla o boto3 usado por app.modules.relatorios.service com um S3 em memória."""
+    falso = S3Falso()
+    monkeypatch.setattr(settings, "s3_bucket", "bucket-teste")
+    monkeypatch.setattr(relatorios_service, "boto3", _StubBoto3(falso))
+    return falso

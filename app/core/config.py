@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     s3_bucket: str = ""
 
+    # Autorização M2M (OAuth2 client_credentials) para POST /relatorios/exportar-m2m.
+    # Reaproveita o mesmo Authorization Server do login SSO: vazio usa KEYCLOAK_ISSUER.
+    # Independe de AUTH_MODE (funciona mesmo com dev/ldap para os usuários humanos).
+    oauth2_m2m_issuer: str = ""
+    # client_id (claim "azp"/"client_id" do token) aceito; vazio aceita qualquer client
+    # que tenha o escopo exigido pelo endpoint.
+    oauth2_m2m_client_id: str = ""
+
     @model_validator(mode="after")
     def _checar_keycloak(self):
         if self.auth_mode == "keycloak" and not (self.keycloak_issuer and self.keycloak_client_id):
