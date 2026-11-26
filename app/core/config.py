@@ -44,6 +44,19 @@ class Settings(BaseSettings):
     # que tenha o escopo exigido pelo endpoint.
     oauth2_m2m_client_id: str = ""
 
+    # Integração OIDC (Authorization Code + PKCE) para GET /relatorios/exportar-oidc/iniciar:
+    # delega a export a um usuário humano (ID token), ao contrário do M2M acima (sem usuário).
+    # Vazio usa KEYCLOAK_ISSUER (mesmo Authorization Server do login SSO).
+    oidc_export_issuer: str = ""
+    oidc_export_client_id: str = ""
+    oidc_export_redirect_uri: str = ""  # ex.: http://<ip-da-instancia>:8000/relatorios/oidc/callback
+    # Base usada pela própria API para chamar /token e /certs (server-to-server). Vazio
+    # reaproveita OIDC_EXPORT_ISSUER. Só precisa ser diferente quando a API roda na MESMA
+    # máquina do Keycloak: aí o IP público pode não aceitar conexão de volta pra si mesma
+    # (hairpin NAT), então aqui se usa "http://localhost/realms/<realm>" em vez do IP público
+    # (que continua sendo o emissor validado no ID token, via Frontend URL fixo no realm).
+    oidc_export_issuer_interno: str = ""
+
     @model_validator(mode="after")
     def _checar_keycloak(self):
         if self.auth_mode == "keycloak" and not (self.keycloak_issuer and self.keycloak_client_id):

@@ -33,12 +33,18 @@ def _csv_do_relatorio(relatorio: dict) -> bytes:
     return buffer.getvalue().encode("utf-8-sig")  # BOM: o Excel abre acentuação corretamente
 
 
-def exportar_relatorio_periodo(db: Session, inicio: date | None, fim: date | None, distrito_id: int | None) -> dict:
+def exportar_relatorio_periodo(
+    db: Session, inicio: date | None, fim: date | None, distrito_id: int | None, *, subprefixo: str | None = None
+) -> dict:
     """Gera o relatório de indicadores do período (mesmos dados do dashboard) como
-    CSV e envia para o bucket configurado em S3_BUCKET."""
+    CSV e envia para o bucket configurado em S3_BUCKET.
+
+    `subprefixo` isola exportações feitas por um fluxo específico (ex.: OIDC, com o
+    usuário que autorizou) das exportações manuais/M2M, sem mudar o bucket."""
     relatorio = sp_relatorio_periodo(db, inicio, fim, distrito_id)
     conteudo = _csv_do_relatorio(relatorio)
-    chave = f"{_PREFIXO}periodo_{relatorio['inicio']}_{relatorio['fim']}.csv"
+    prefixo = f"{_PREFIXO}{subprefixo}/" if subprefixo else _PREFIXO
+    chave = f"{prefixo}periodo_{relatorio['inicio']}_{relatorio['fim']}.csv"
 
     cliente = _cliente_s3()
     try:

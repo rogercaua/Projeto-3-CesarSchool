@@ -6,6 +6,7 @@ pyjwt[crypto]>=2.8
 cryptography>=42  # AES-GCM das colunas cifradas
 ldap3>=2.9  # bind e busca de grupos no AUTH_MODE=ldap
 boto3>=1.34  # exportação de relatórios para o Amazon S3
+httpx>=0.27  # troca do code pelo token no fluxo OIDC (POST /relatorios/exportar-oidc)
 
 # Driver do banco escolhido (descomente um):
 # psycopg2-binary>=2.9   # PostgreSQL -> postgresql+psycopg2://usuario:senha@localhost/governanca_esf

@@ -1,16 +1,18 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.modules.auditoria.service import registrar
-from app.modules.auth import oauth2_m2m
+from app.modules.auth import oauth2_m2m, oidc_export
 from app.modules.auth.deps import Principal, exigir, exigir_escopo_m2m
 from app.modules.auth.schemas import Papel
 from app.modules.relatorios import service
 
 router = APIRouter(prefix="/relatorios", tags=["relatorios"])
+_COOKIE_ESTADO_OIDC = "oidc_export_estado"
 
 _PODE_EXPORTAR = exigir(Papel.GESTOR_INFO, Papel.ADMIN)
 _PODE_EXPORTAR_M2M = exigir_escopo_m2m("relatorios:exportar")
@@ -54,3 +56,36 @@ def exportar_m2m(
               {"bucket": resultado["bucket"], "chave": resultado["chave"], "client_id": cliente.client_id})
     db.commit()
     return resultado
+
+
+@router.get("/exportar-oidc/iniciar")
+def exportar_oidc_iniciar():
+    """Inicia a exportação via OIDC (Authorization Code + PKCE): redireciona o navegador
+    pro login no Authorization Server (Keycloak, no papel do Google Drive do enunciado).
+    A pessoa autoriza; o ID token devolvido na volta identifica quem exportou."""
+    try:
+        url, cookie_estado = oidc_export.iniciar_autorizacao()
+    except oidc_export.OidcExportError as erro:
+        raise HTTPException(500, str(erro))
+    resposta = RedirectResponse(url)
+    resposta.set_cookie(_COOKIE_ESTADO_OIDC, cookie_estado, httponly=True, max_age=300)
+    return resposta
+
+
+@router.get("/oidc/callback")
+def exportar_oidc_callback(code: str, state: str, request: Request, db: Session = Depends(get_db)):
+    """Recebe a volta do Authorization Server, valida a identidade de quem autorizou e
+    dispara a mesma exportação para o S3 usada pelo fluxo manual/M2M, sob um prefixo
+    identificado pelo usuário (distinto do M2M, que não tem usuário por trás)."""
+    try:
+        identidade = oidc_export.concluir_autorizacao(code, state, request.cookies.get(_COOKIE_ESTADO_OIDC))
+    except oidc_export.OidcExportError as erro:
+        raise HTTPException(401, str(erro))
+
+    resultado = service.exportar_relatorio_periodo(db, None, None, None, subprefixo=f"oidc/{identidade.username}")
+    registrar(db, None, "RELATORIO_EXPORTADO_OIDC", "relatorio", None,
+              {"bucket": resultado["bucket"], "chave": resultado["chave"], "usuario_oidc": identidade.username})
+    db.commit()
+    resposta = JSONResponse(resultado)
+    resposta.delete_cookie(_COOKIE_ESTADO_OIDC)
+    return resposta
